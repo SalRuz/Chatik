@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Простой чат</title>
+  <style>
+    #chat-box {
+      height: 300px;
+      border: 1px solid #ccc;
+      padding: 10px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+    }
+    #message-input {
+      width: 70%;
+      padding: 5px;
+    }
+    #send-btn {
+      padding: 5px 10px;
+    }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h2>Простой чат</h2>
+
+  <!-- Форма ввода имени -->
+  <div id="name-form">
+    <label>Ваше имя: <input type="text" id="username" placeholder="Введите имя"></label>
+    <button onclick="setUsername()">Войти</button>
+  </div>
+
+  <!-- Чат -->
+  <div id="chat-container" class="hidden">
+    <div id="chat-box"></div>
+    <input type="text" id="message-input" placeholder="Введите сообщение..." onkeypress="if(event.key==='Enter') sendMessage()">
+    <button id="send-btn" onclick="sendMessage()">Отправить</button>
+  </div>
+
+  <script src="chat.js"></script>
+</body>
+</html>
