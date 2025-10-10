@@ -1,42 +1,135 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Простой чат</title>
   <style>
-    #chat-box {
+    body { margin:0; overflow:hidden; background:#87ceeb; }
+    #game {
+      position: relative;
+      width: 600px;
       height: 300px;
-      border: 1px solid #ccc;
-      padding: 10px;
-      overflow-y: auto;
-      margin-bottom: 10px;
+      background: #5c94fc;
+      overflow: hidden;
+      margin: 0 auto;
+      border: 2px solid #333;
     }
-    #message-input {
-      width: 70%;
-      padding: 5px;
+    #player, #enemy {
+      position: absolute;
+      width: 40px;
+      height: 50px;
+      border-radius: 5px;
     }
-    #send-btn {
-      padding: 5px 10px;
+    #player {
+      background: red;
+      bottom: 50px;
+      left: 50px;
     }
-    .hidden { display: none; }
+    #enemy {
+      background: darkgreen;
+      bottom: 50px;
+      left: 400px;
+    }
+    #platform {
+      position: absolute;
+      width: 600px;
+      height: 50px;
+      background: green;
+      bottom: 0;
+      left: 0;
+    }
   </style>
 </head>
 <body>
-  <h2>Простой чат</h2>
-
-  <!-- Форма ввода имени -->
-  <div id="name-form">
-    <label>Ваше имя: <input type="text" id="username" placeholder="Введите имя"></label>
-    <button onclick="setUsername()">Войти</button>
+  <div id="game">
+    <div id="player"></div>
+    <div id="enemy"></div>
+    <div id="platform"></div>
   </div>
 
-  <!-- Чат -->
-  <div id="chat-container" class="hidden">
-    <div id="chat-box"></div>
-    <input type="text" id="message-input" placeholder="Введите сообщение..." onkeypress="if(event.key==='Enter') sendMessage()">
-    <button id="send-btn" onclick="sendMessage()">Отправить</button>
-  </div>
+  <script>
+    const player = document.getElementById('player');
+    const enemy = document.getElementById('enemy');
+    const game = document.getElementById('game');
 
-  <script src="chat.js"></script>
+    const gameWidth = game.clientWidth;
+    const playerWidth = player.clientWidth;
+    const enemyWidth = enemy.clientWidth;
+
+    let posX = 50, posY = 50;
+    let velocityY = 0;
+    let gravity = 0.8;
+    let onGround = true;
+    let canSquash = false;
+    let enemyAlive = true;
+    let enemyPosX = 400;
+    let enemySpeed = 2;
+
+    const keys = { left: false, right: false, up: false };
+
+    document.addEventListener('keydown', (e) => {
+      if(e.code === 'ArrowLeft') keys.left = true;
+      if(e.code === 'ArrowRight') keys.right = true;
+      if(e.code === 'ArrowUp' && onGround) {
+        velocityY = -15;
+        onGround = false;
+        canSquash = true; // активируем возможность утопить врага при прыжке
+      }
+    });
+
+    document.addEventListener('keyup', (e) => {
+      if(e.code === 'ArrowLeft') keys.left = false;
+      if(e.code === 'ArrowRight') keys.right = false;
+    });
+
+    function detectCollision(px, py, pw, ph, ex, ey, ew, eh){
+      return px < ex + ew && px + pw > ex && py < ey + eh && py + ph > ey;
+    }
+
+    function gameLoop() {
+      // Движение игрока
+      if(keys.left) posX -= 5;
+      if(keys.right) posX += 5;
+      if(posX < 0) posX = 0;
+      if(posX > gameWidth - playerWidth) posX = gameWidth - playerWidth;
+
+      // Гравитация
+      posY += velocityY;
+      velocityY += gravity;
+      if(posY > 50) {
+        posY = 50;
+        velocityY = 0;
+        onGround = true;
+        canSquash = false;
+      }
+
+      // Движение врага взад-вперёд (патруль)
+      if(enemyAlive) {
+        enemyPosX += enemySpeed;
+        if(enemyPosX < 0 || enemyPosX > gameWidth - enemyWidth) enemySpeed *= -1;
+        enemy.style.left = enemyPosX + 'px';
+      }
+
+      player.style.left = posX + 'px';
+      player.style.bottom = posY + 'px';
+
+      // Коллизия игрока и врага
+      if(enemyAlive && detectCollision(posX, posY, playerWidth, 50, enemyPosX, 50, enemyWidth, 50)){
+        if(canSquash && velocityY > 0) {
+          // Марио прыгнул на врага сверху - убиваем врага
+          enemyAlive = false;
+          enemy.style.background = 'gray';
+          setTimeout(() => enemy.style.display = 'none', 300);
+          velocityY = -10; // отскок Марио после удара
+        } else {
+          // Марио столкнулся с врагом сбоку — можно добавить уменьшение жизни или рестарт
+          alert("Game Over:(");
+          location.reload();
+        }
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    gameLoop();
+  </script>
 </body>
 </html>
