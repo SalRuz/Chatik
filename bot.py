@@ -1,29 +1,33 @@
 import telebot
+from telebot import apihelper
 import requests
 import time
 
-# --- НАСТРОЙКИ ---
+# --- ВАШИ НАСТРОЙКИ ---
 TG_TOKEN = '8512207770:AAEKLtYEph7gleybGhF2lc7Gwq82Kj1yedM'
 ADMIN_ID = 1170970828
-
-# Настройки PythonAnywhere
 PA_USERNAME = 'SalRuzO'
 PA_TOKEN = '69157472762730e677177924f2fd940a21ea7f0c'
-PA_DOMAIN = 'www.pythonanywhere.com'
-SCRIPT_FILE = 'vk_bot.py' # Имя файла на PythonAnywhere
+SCRIPT_FILE = 'vk_bot.py' 
+
+# --- НАСТРОЙКИ ПРОКСИ (БЕЗ НИХ НЕ ЗАРАБОТАЕТ НА FREE ТАРИФЕ) ---
+PROXY_URL = 'http://proxy.server:3128'
+proxy_dict = {'https': PROXY_URL, 'http': PROXY_URL}
+
+# Устанавливаем прокси для Телеграма
+apihelper.proxy = {'https': PROXY_URL}
 
 bot = telebot.TeleBot(TG_TOKEN)
 
-# Базовый заголовок для авторизации
+# Заголовки для API PythonAnywhere
 auth_headers = {'Authorization': f'Token {PA_TOKEN}'}
+PA_DOMAIN = 'www.pythonanywhere.com'
+base_url = f'https://{PA_DOMAIN}/api/v0/user/{PA_USERNAME}/consoles/'
 
 def start_script_on_pa():
-    base_url = f'https://{PA_DOMAIN}/api/v0/user/{PA_USERNAME}/consoles/'
-    
-    # 1. Сначала проверяем, есть ли уже запущенные консоли, чтобы не плодить их
-    # (На бесплатном тарифе лимит - 2 консоли)
+    # 1. Проверяем запущенные консоли (через прокси)
     try:
-        resp = requests.get(base_url, headers=auth_headers)
+        resp = requests.get(base_url, headers=auth_headers, proxies=proxy_dict, timeout=10)
         consoles = resp.json()
     except Exception as e:
         return f"Ошибка соединения с API: {e}"
@@ -36,27 +40,25 @@ def start_script_on_pa():
             console_id = console['id']
             break
     
-    # 2. Если консоли нет, создаем новую
+    # 2. Если консоли нет, создаем новую (через прокси)
     if not console_id:
         try:
-            resp = requests.post(base_url, headers=auth_headers, json={'executable': 'bash'})
+            resp = requests.post(base_url, headers=auth_headers, json={'executable': 'bash'}, proxies=proxy_dict)
             if resp.status_code in [200, 201]:
                 data = resp.json()
                 console_id = data['id']
-                # Ждем пару секунд, пока консоль загрузится ("booting")
-                time.sleep(2) 
+                time.sleep(3) # Ждем загрузку консоли
             else:
                 return f"Не удалось создать консоль: {resp.text}"
         except Exception as e:
              return f"Ошибка создания консоли: {e}"
 
-    # 3. Отправляем команду запуска в эту консоль
-    # Мы используем nohup, чтобы процесс жил чуть дольше, но на Free тарифе это не гарантирует вечную работу
+    # 3. Отправляем команду запуска (через прокси)
     command = f"python3 {SCRIPT_FILE}\n" 
     
     send_url = f'{base_url}{console_id}/send_input/'
     try:
-        resp = requests.post(send_url, headers=auth_headers, json={'input': command})
+        resp = requests.post(send_url, headers=auth_headers, json={'input': command}, proxies=proxy_dict)
         if resp.status_code == 200:
             return f"✅ Команда отправлена в консоль #{console_id}!"
         else:
@@ -68,7 +70,9 @@ def start_script_on_pa():
 
 @bot.message_handler(commands=['run'])
 def run_remote(message):
-    if message.from_user.id != ADMIN_ID: return
+    if message.from_user.id != ADMIN_ID:
+        bot.reply_to(message, "Нет доступа.")
+        return
     
     bot.reply_to(message, "⏳ Подключаюсь к PythonAnywhere...")
     result = start_script_on_pa()
@@ -78,19 +82,18 @@ def run_remote(message):
 def kill_consoles(message):
     if message.from_user.id != ADMIN_ID: return
     
-    # Эта функция убивает ВСЕ консоли, чтобы остановить бота
-    base_url = f'https://{PA_DOMAIN}/api/v0/user/{PA_USERNAME}/consoles/'
     try:
-        resp = requests.get(base_url, headers=auth_headers)
+        resp = requests.get(base_url, headers=auth_headers, proxies=proxy_dict)
         consoles = resp.json()
         count = 0
         for console in consoles:
-            requests.delete(f"{base_url}{console['id']}/", headers=auth_headers)
+            cid = console['id']
+            requests.delete(f"{base_url}{cid}/", headers=auth_headers, proxies=proxy_dict)
             count += 1
         bot.reply_to(message, f"💀 Убито консолей: {count}. Скрипты должны остановиться.")
     except Exception as e:
-        bot.reply_to(message, f"Ошибка: {e}")
+        bot.reply_to(message, f"Ошибка при удалении: {e}")
 
 if __name__ == '__main__':
-    print("Бот-контроллер запущен...")
+    print("Бот запущен. Нажмите Ctrl+C для выхода.")
     bot.infinity_polling()
