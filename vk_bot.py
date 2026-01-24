@@ -575,6 +575,33 @@ def send_message(user_id, message, keyboard=None, vk_session=None, peer_id=None)
         vk_session.method("messages.send", params)
     except Exception as e:
         logger.error(f"Ошибка отправки сообщения: {e}")
+def send_location_image(user_id, location, point, message, keyboard, vk_session):
+    loc_short = location
+    if location == "Тёмная долина":
+        loc_short = "ТД"
+    filename_base = f"{loc_short} {point}"
+    img_path = None
+    for ext in ["png", "jpg", "jpeg"]:
+        path = f"location/{filename_base}.{ext}"
+        if os.path.exists(path):
+            img_path = path
+            break
+    if not img_path:
+        send_message(user_id, message, keyboard, vk_session)
+        return
+    try:
+        upload_url = vk_session.method("photos.getMessagesUploadServer")["upload_url"]
+        with open(img_path, "rb") as f:
+            response = vk_session.http.post(upload_url, files={"photo": f})
+        result = response.json()
+        photo_data = vk_session.method("photos.saveMessagesPhoto", {"photo": result["photo"], "server": result["server"], "hash": result["hash"]})[0]
+        params = {"user_id": user_id, "attachment": f"photo{photo_data['owner_id']}_{photo_data['id']}", "random_id": 0, "message": message}
+        if keyboard:
+            params["keyboard"] = keyboard.get_keyboard()
+        vk_session.method("messages.send", params)
+    except Exception as e:
+        logger.error(f"Ошибка отправки изображения локации: {e}")
+        send_message(user_id, message, keyboard, vk_session)
 def reset_all_data():
     global players, factions, shared_warehouse, shared_warehouse_money, territory_control, faction_leaders, territory_exhaustion, emission_counter, last_restored_categories, faction_shared_squads
     players = {}
@@ -3555,7 +3582,7 @@ def check_pending_states(vk_session):
                     transition_msg += "\n\n📍 Вы на точке перехода!"
                     for dest_loc, dest_point in destinations:
                         transition_msg += f"\nТеперь вы можете попасть на {dest_loc} {dest_point}"
-                send_message(user_id, transition_msg, create_main_menu_keyboard(user_id), vk_session)
+                send_location_image(user_id, current_location, current_point, transition_msg, create_main_menu_keyboard(user_id), vk_session)
                 updated_any = True
         elif data.get("state") == STATE_RESTING:
             start_time = data.get("rest_start_time")
