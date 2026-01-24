@@ -4147,7 +4147,7 @@ def handle_message(event, vk_session):
    save_data()
    current_loc = players[user_id]["location"]
    current_point = players[user_id]["point"]
-   send_message(user_id, f"📍 Ваше местоположение: {current_loc} {current_point}\nВыбери локацию для перехода:", create_transition_keyboard(user_id), vk_session)
+   send_location_image(user_id, current_loc, current_point, f"📍 Ваше местоположение: {current_loc} {current_point}\nВыбери локацию для перехода:", create_transition_keyboard(user_id), vk_session)
   elif text == get_main_menu_button(players[user_id]["point"], players[user_id]["location"]):
    handle_exploration(user_id, vk_session)
    return
