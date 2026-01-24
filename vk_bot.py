@@ -5,6 +5,8 @@ import json
 import os
 import random
 import io
+import sqlite3
+from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 from vk_api.longpoll import VkLongPoll, VkEventType
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
@@ -13,7 +15,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 TOKEN = "vk1.a.CU2M1F0_9rxlYYuzK57JMRnY3XO2WmOP_TpXDxHbki0AM_mwV-_eBjjfF8ByZHz--fIHilfQD6oS4_bcqG-cc_GUaDln_X87jt6lG8bVX5MJUribi1nPEbY9pY1X3j-FGoq2Hc-CF2GDvAzalh9VmYtT-iFmyTDepaeJwZXZyYU0eFZg7BwhHnuqmIhQrdiG5LqhWWf9Pn536k1MVKAknQ"
 GROUP_ID = 233350137
-DATA_FILE = "game_data.json"
+DATA_DIR = Path("data")
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+DB_PATH = DATA_DIR / "bot.db"
 AVATAR_DIR = "custom_avatars"
 os.makedirs(AVATAR_DIR, exist_ok=True)
 CELL_SIZE = 60
@@ -130,6 +134,20 @@ faction_shared_squads = {"🛡️ Долг": 0, "☦️ Грех": 0, "☢️ О
 banned_users = {}
 admin_users = []
 shared_warehouse_money = 0
+def init_database():
+    conn = sqlite3.connect(str(DB_PATH))
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS players (
+        user_id INTEGER PRIMARY KEY,
+        data TEXT NOT NULL
+    )''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS game_state (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    )''')
+    conn.commit()
+    conn.close()
+    logger.info(f"База данных инициализирована: {DB_PATH}")
 def create_start_keyboard():
     k = VkKeyboard(one_time=False)
     k.add_button("Старт", color=VkKeyboardColor.POSITIVE)
@@ -415,86 +433,98 @@ def create_shared_squads_keyboard():
     k.add_button("🔚 Назад", color=VkKeyboardColor.SECONDARY)
     return k
 def load_data():
-    global players, factions, shared_warehouse, shared_warehouse_money, territory_control, faction_leaders, territory_exhaustion, emission_counter, last_restored_categories, faction_shared_squads
-    if os.path.exists(DATA_FILE):
+    global players, factions, shared_warehouse, shared_warehouse_money, territory_control, faction_leaders, territory_exhaustion, emission_counter, last_restored_categories, faction_shared_squads, banned_users, admin_users
+    init_database()
+    conn = sqlite3.connect(str(DB_PATH))
+    cursor = conn.cursor()
+    cursor.execute("SELECT user_id, data FROM players")
+    rows = cursor.fetchall()
+    for row in rows:
+        user_id = row[0]
         try:
-            with open(DATA_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                players = {int(k): v for k, v in data.get("players", {}).items()}
-                factions = data.get("factions", {"🛡️ Долг": [], "☦️ Грех": [], "☢️ Одиночки": []})
-                for key in factions:
-                    factions[key] = [int(uid) for uid in factions[key]]
-                shared_warehouse = data.get("shared_warehouse", {})
-                shared_warehouse_money = data.get("shared_warehouse_money", 0)
-                territory_control = data.get("territory_control", {})
-                faction_leaders = data.get("faction_leaders", {})
-                territory_exhaustion = data.get("territory_exhaustion", {})
-                emission_counter = data.get("emission_counter", 0)
-                last_restored_categories = data.get("last_restored_categories", [])
-                faction_shared_squads = data.get("faction_shared_squads", {"🛡️ Долг": 0, "☦️ Грех": 0, "☢️ Одиночки": 0})
-                banned_users = data.get("banned_users", {})
-                if isinstance(banned_users, list):
-                 banned_users = {uid: "Причина не указана" for uid in banned_users}
-                admin_users = data.get("admin_users", [])
-                loaded_limits = data.get("max_faction_sizes", {})
-                for faction in MAX_FACTION_SIZES:
-                    if faction in loaded_limits:
-                        MAX_FACTION_SIZES[faction] = loaded_limits[faction]
-                for uid, p in players.items():
-                    if "backpack" in p:
-                        new_backpack = {}
-                        for item, count in p["backpack"].items():
-                            clean_name = item.lower() if item.lower() in ITEM_ICONS else item
-                            new_backpack[clean_name] = count
-                        p["backpack"] = new_backpack
-                    if "belt" not in p:
-                        p["belt"] = [None, None, None]
-                    if "squads" not in p:
-                        p["squads"] = 0
-                    if "food_units" not in p:
-                        p["food_units"] = 0
-                    if "med_units" not in p:
-                        p["med_units"] = 0
-                    if "rad_units" not in p:
-                        p["rad_units"] = 0
-                    if "donation_end_time" not in p:
-                        p["donation_end_time"] = None
-                    if "donation_artifact" not in p:
-                        p["donation_artifact"] = None
-            if not territory_control:
-                init_territory_control()
-            if not territory_exhaustion:
-                init_territory_exhaustion()
-            logger.info("✅ Данные загружены и нормализованы.")
+            p = json.loads(row[1])
+            if "belt" not in p:
+                p["belt"] = [None, None, None]
+            if "squads" not in p:
+                p["squads"] = 0
+            if "food_units" not in p:
+                p["food_units"] = 0
+            if "med_units" not in p:
+                p["med_units"] = 0
+            if "rad_units" not in p:
+                p["rad_units"] = 0
+            if "donation_end_time" not in p:
+                p["donation_end_time"] = None
+            if "donation_artifact" not in p:
+                p["donation_artifact"] = None
+            if "backpack" in p:
+                new_backpack = {}
+                for item, count in p["backpack"].items():
+                    clean_name = item.lower() if item.lower() in ITEM_ICONS else item
+                    new_backpack[clean_name] = count
+                p["backpack"] = new_backpack
+            players[user_id] = p
         except Exception as e:
-            logger.error(f"❌ Ошибка загрузки данных: {e}")
-            logger.info("🔄 Используем пустые данные.")
-    else:
-        logger.info("📁 Файл данных не найден. Создаём новый.")
+            logger.error(f"Ошибка загрузки игрока {user_id}: {e}")
+    def load_state(key, default):
+        cursor.execute("SELECT value FROM game_state WHERE key = ?", (key,))
+        row = cursor.fetchone()
+        if row:
+            try:
+                return json.loads(row[0])
+            except:
+                return default
+        return default
+    factions = load_state("factions", {"🛡️ Долг": [], "☦️ Грех": [], "☢️ Одиночки": []})
+    for key in factions:
+        factions[key] = [int(uid) for uid in factions[key]]
+    shared_warehouse = load_state("shared_warehouse", {})
+    shared_warehouse_money = load_state("shared_warehouse_money", 0)
+    territory_control = load_state("territory_control", {})
+    faction_leaders = load_state("faction_leaders", {})
+    territory_exhaustion = load_state("territory_exhaustion", {})
+    emission_counter = load_state("emission_counter", 0)
+    last_restored_categories = load_state("last_restored_categories", [])
+    faction_shared_squads = load_state("faction_shared_squads", {"🛡️ Долг": 0, "☦️ Грех": 0, "☢️ Одиночки": 0})
+    banned_users = load_state("banned_users", {})
+    if isinstance(banned_users, list):
+        banned_users = {uid: "Причина не указана" for uid in banned_users}
+    admin_users = load_state("admin_users", [])
+    loaded_limits = load_state("max_faction_sizes", {})
+    for faction in MAX_FACTION_SIZES:
+        if faction in loaded_limits:
+            MAX_FACTION_SIZES[faction] = loaded_limits[faction]
+    conn.close()
+    if not territory_control:
         init_territory_control()
+    if not territory_exhaustion:
         init_territory_exhaustion()
+    logger.info("✅ Данные загружены из SQLite.")
 def save_data():
     try:
-        data = {
-            "players": players,
-            "factions": factions,
-            "shared_warehouse": shared_warehouse,
-            "shared_warehouse_money": shared_warehouse_money,
-            "territory_control": territory_control,
-            "faction_leaders": faction_leaders,
-            "territory_exhaustion": territory_exhaustion,
-            "emission_counter": emission_counter,
-            "last_restored_categories": last_restored_categories,
-            "faction_shared_squads": faction_shared_squads,
-            "banned_users": banned_users,
-            "admin_users": admin_users,
-            "max_faction_sizes": MAX_FACTION_SIZES
-        }
-        with open(DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
-        logger.debug("💾 Данные сохранены.")
+        conn = sqlite3.connect(str(DB_PATH))
+        cursor = conn.cursor()
+        for user_id, data in players.items():
+            cursor.execute("INSERT OR REPLACE INTO players (user_id, data) VALUES (?, ?)", (user_id, json.dumps(data, ensure_ascii=False)))
+        def save_state(key, value):
+            cursor.execute("INSERT OR REPLACE INTO game_state (key, value) VALUES (?, ?)", (key, json.dumps(value, ensure_ascii=False)))
+        save_state("factions", factions)
+        save_state("shared_warehouse", shared_warehouse)
+        save_state("shared_warehouse_money", shared_warehouse_money)
+        save_state("territory_control", territory_control)
+        save_state("faction_leaders", faction_leaders)
+        save_state("territory_exhaustion", territory_exhaustion)
+        save_state("emission_counter", emission_counter)
+        save_state("last_restored_categories", last_restored_categories)
+        save_state("faction_shared_squads", faction_shared_squads)
+        save_state("banned_users", banned_users)
+        save_state("admin_users", admin_users)
+        save_state("max_faction_sizes", MAX_FACTION_SIZES)
+        conn.commit()
+        conn.close()
+        logger.debug("💾 Данные сохранены в SQLite.")
     except Exception as e:
-        logger.error(f"❌ Ошибка сохранения данных: {e}")
+        logger.error(f"❌ Ошибка сохранения в SQLite: {e}")
 def has_active_donation(user_id):
     p = players.get(user_id)
     if not p:
