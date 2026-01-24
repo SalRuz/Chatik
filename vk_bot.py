@@ -104,6 +104,7 @@ MIN_SQUADS_FOR_POINT = {"База": 5,"Точка ресурсов": 4,"Аном
 CONVERSION_VALUES = {"шоколадный батончик": {"type": "food", "value": 1},"хлеб": {"type": "food", "value": 2},"колбаса": {"type": "food", "value": 3},"консерва": {"type": "food", "value": 4},"бинт": {"type": "med", "value": 1},"аптечка": {"type": "med", "value": 2},"армейская аптечка": {"type": "med", "value": 3},"научная аптечка": {"type": "special", "med": 3, "rad": 1},"сигареты": {"type": "rad", "value": 1},"водка": {"type": "rad", "value": 2},"радиопротектор": {"type": "rad", "value": 3},"антирад": {"type": "rad", "value": 4}}
 FACTION_ICONS = {"🛡️ Долг": "icons/dolg.png","☦️ Грех": "icons/greh.png","☢️ Одиночки": "icons/odinochki.png"}
 FACTION_START_LOCATIONS = {"🛡️ Долг": ("Кордон", "Б1"),"☦️ Грех": ("Тёмная долина", "Б1"),"☢️ Одиночки": ("Свалка", "Б1")}
+FACTION_CHAT_LINKS = {"🛡️ Долг": "https://vk.me/join//eWcWfZ3Kcr3PZtkGLF91BIxJq4GnZ4aeB8=", "☦️ Грех": "https://vk.me/join/gO2fqOqDnL756hWkhjvMm9P2ypNTz7/r2vw=", "☢️ Одиночки": "https://vk.me/join/ynzBEUOPUmsKVaB0K0BhSFnzGZsNJlrFGNY="}
 POINT_TYPES = {"Б1": "База", "Б2": "База", "Б3": "База", "Б4": "База", "Т1": "Территория", "Т2": "Территория", "Т3": "Территория", "Т4": "Территория", "Т5": "Территория", "ТР1": "Точка ресурсов", "ТР2": "Точка ресурсов", "ТР3": "Точка ресурсов", "А1": "Аномальная зона", "А2": "Аномальная зона", "А3": "Аномальная зона", "Л1": "Логово", "Л2": "Логово", "Л3": "Логово", "Л4": "Логово", "Л5": "Логово"}
 LOCATIONS = {"Кордон": ["Т1", "Т2", "Т3", "Т4", "Т5", "ТР1", "ТР2", "ТР3", "Б1", "Б2", "Б3", "Б4", "А1", "А2", "А3", "Л1", "Л2", "Л3", "Л4", "Л5"], "Свалка": ["Т1", "Т2", "Т3", "ТР1", "ТР2", "ТР3", "Б1", "Б2", "А1", "А2", "А3", "Л1", "Л2", "Л3", "Л4"], "Тёмная долина": ["Т1", "Т2", "Т3", "ТР1", "ТР2", "Б1", "Б2", "Б3", "А1", "А2", "Л1", "Л2", "Л3", "Л4"], "Поляна": ["Т1", "Т2", "ТР1", "ТР2", "ТР3", "Б1", "Б2", "Б3", "А1", "А2", "А3", "Л1", "Л2"]}
 BASE_POINTS = {"Кордон": "Б1", "Свалка": "Б1", "Тёмная долина": "Б1"}
@@ -2480,7 +2481,13 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
         send_message(user_id, f"Прикрепите фото для игрока {target_nick}:", None, vk_session)
         return True
     if text == "/команды" and is_admin(user_id):
-        admin_help = """📋 АДМИН КОМАНДЫ:
+        faction_info = "\n👥 ИГРОКИ В ГРУППИРОВКАХ:\n"
+        for faction in ["🛡️ Долг", "☦️ Грех", "☢️ Одиночки"]:
+            current = len(factions.get(faction, []))
+            limit = MAX_FACTION_SIZES.get(faction, 5)
+            faction_info += f"\n{faction}: {current}/{limit}"
+        admin_help = f"""📋 АДМИН КОМАНДЫ:
+{faction_info}
 
 🔹 /бог
    Получить 1000р и восстановить все характеристики
@@ -2527,9 +2534,9 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
    Изменить ник игрока (автопоиск)
    Пример: /ник Деловой Гангстер Крутой Босс
 
-🔹 /бан [ник]
+🔹 /бан [ник] [причина]
    Заблокировать игрока в боте
-   Пример: /бан Плохой Игрок
+   Пример: /бан Плохой Игрок Нарушение правил
 
 🔹 /разбан [ник]
    Разблокировать игрока
@@ -2541,14 +2548,14 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
 🔹 /reset_all
    Сбросить все данные игры
 
-🔹 2604
-   Вернуться в главное меню (для всех)
-
 🔹 /админ [ник]
    Назначить игрока админом (только разработчик)
 
 🔹 /деладмин [ник]
-   Снять игрока с админки (только разработчик)"""
+   Снять игрока с админки (только разработчик)
+
+🔹 2604
+   Вернуться в главное меню (для всех)"""
         send_message(user_id, admin_help, None, vk_session)
         return True
     if text.startswith("/лимит ") and is_admin(user_id):
@@ -4015,8 +4022,9 @@ def handle_message(event, vk_session):
    send_message(user_id, "Выберите тип снаряжения:", create_equipment_category_keyboard(), vk_session)
    return
   faction = players[user_id]["faction"]
+  money = players[user_id].get("money", 0)
   if eq_type == "detector":
-   msg_lines = ["📟 ДЕТЕКТОРЫ", ""]
+   msg_lines = [f"💲 Ваши деньги: {money}р", "", "📟 ДЕТЕКТОРЫ", ""]
    num = 1
    for name, data in DETECTORS.items():
     msg_lines.append(f"{num}️⃣ «{name}» — 💰{data['price']}р (⚡{data['charge']})")
@@ -4032,7 +4040,7 @@ def handle_message(event, vk_session):
    return
   items = EQUIPMENT[faction][eq_type]
   if eq_type == "weapon":
-   msg_lines = [f"🔫 ОРУЖИЕ ({faction})", ""]
+   msg_lines = [f"💲 Ваши деньги: {money}р", "", f"🔫 ОРУЖИЕ ({faction})", ""]
    pistols = []
    smg = []
    rifles = []
@@ -4059,7 +4067,7 @@ def handle_message(event, vk_session):
     msg_lines.append("")
    msg_lines.append("✍️ Напишите точное название для покупки:")
   else:
-   msg_lines = [f"🦺 БРОНЯ ({faction})", ""]
+   msg_lines = [f"💲 Ваши деньги: {money}р", "", f"🦺 БРОНЯ ({faction})", ""]
    for i, item in enumerate(items, 1):
     name, dur, shield, blast, anom, price = item
     msg_lines.append(f"{i}️⃣ {name} — 💰{price}р")
@@ -4148,7 +4156,7 @@ def handle_message(event, vk_session):
    faction_name = "☢️ Одиночки"
   if faction_name:
    if len(factions[faction_name]) >= MAX_FACTION_SIZES[faction_name]:
-    send_message(user_id, f"❌ В группировке «{faction_name}» уже 5 игроков. Выбери другую.", create_faction_keyboard(), vk_session)
+    send_message(user_id, f"❌ В группировке «{faction_name}» уже максимум игроков. Выбери другую.", create_faction_keyboard(), vk_session)
    else:
     factions[faction_name].append(user_id)
     players[user_id]["faction"] = faction_name
@@ -4157,7 +4165,8 @@ def handle_message(event, vk_session):
     players[user_id]["point"] = start_point
     players[user_id]["state"] = STATE_ENTERING_NICKNAME
     save_data()
-    send_message(user_id, "Отличный выбор! Теперь придумай себе кличку в Зоне:", None, vk_session)
+    chat_link = FACTION_CHAT_LINKS.get(faction_name, "")
+    send_message(user_id, f"✅ Вы вступили в группировку {faction_name}!\n\n💬 Ссылка на беседу группировки:\n{chat_link}\n\nТеперь придумай себе кличку в Зоне:", None, vk_session)
    return
  if state == STATE_ENTERING_NICKNAME:
   nickname = text.strip()
