@@ -3465,6 +3465,27 @@ def handle_equipment_buy_confirmation(user_id, text, vk_session):
         item_name = p.get("pending_buy_item")
         item_type = p.get("pending_buy_type")
         faction = p["faction"]
+        if item_type == "detector" and p.get("detector"):
+            send_message(user_id, f"❌ У вас уже есть детектор: {p['detector']}.", create_equipment_category_keyboard(), vk_session)
+            p["state"] = STATE_TRADER_BUY_EQUIPMENT
+            p["pending_buy_item"] = None
+            p["pending_buy_type"] = None
+            save_data()
+            return
+        if item_type == "weapon" and p.get("weapon"):
+            send_message(user_id, f"❌ У вас уже есть оружие: {p['weapon']}.", create_equipment_category_keyboard(), vk_session)
+            p["state"] = STATE_TRADER_BUY_EQUIPMENT
+            p["pending_buy_item"] = None
+            p["pending_buy_type"] = None
+            save_data()
+            return
+        if item_type == "armor" and p.get("armor"):
+            send_message(user_id, f"❌ У вас уже есть броня: {p['armor']}.", create_equipment_category_keyboard(), vk_session)
+            p["state"] = STATE_TRADER_BUY_EQUIPMENT
+            p["pending_buy_item"] = None
+            p["pending_buy_type"] = None
+            save_data()
+            return
         price = None
         if item_type == "detector":
             price = DETECTORS[item_name]["price"]
@@ -4026,10 +4047,15 @@ def handle_message(event, vk_session):
    return
   faction = players[user_id]["faction"]
   money = players[user_id].get("money", 0)
+  p = players[user_id]
   if eq_type == "detector":
+   if p.get("detector"):
+    send_message(user_id, f"❌ У вас уже есть детектор: {p['detector']}. Сначала продайте его.", create_equipment_category_keyboard(), vk_session)
+    return
    msg_lines = [f"💲 Ваши деньги: {money}р", "", "📟 ДЕТЕКТОРЫ", ""]
+   sorted_detectors = sorted(DETECTORS.items(), key=lambda x: x[1]["price"])
    num = 1
-   for name, data in DETECTORS.items():
+   for name, data in sorted_detectors:
     msg_lines.append(f"{num}️⃣ «{name}» — 💰{data['price']}р (⚡{data['charge']})")
     num += 1
    msg_lines.append("")
@@ -4041,37 +4067,26 @@ def handle_message(event, vk_session):
    players[user_id]["state"] = STATE_TRADER_BUY_EQUIPMENT_CONFIRM
    save_data()
    return
+  if eq_type == "weapon" and p.get("weapon"):
+   send_message(user_id, f"❌ У вас уже есть оружие: {p['weapon']}. Сначала продайте его.", create_equipment_category_keyboard(), vk_session)
+   return
+  if eq_type == "armor" and p.get("armor"):
+   send_message(user_id, f"❌ У вас уже есть броня: {p['armor']}. Сначала продайте её.", create_equipment_category_keyboard(), vk_session)
+   return
   items = EQUIPMENT[faction][eq_type]
   if eq_type == "weapon":
+   sorted_items = sorted(items, key=lambda x: x[4])
    msg_lines = [f"💲 Ваши деньги: {money}р", "", f"🔫 ОРУЖИЕ ({faction})", ""]
-   pistols = []
-   smg = []
-   rifles = []
-   snipers = []
-   for i, item in enumerate(items, 1):
+   for i, item in enumerate(sorted_items, 1):
     name, dur, dmg, acc, price = item
-    line = f"{i}️⃣ {name} — 💰{price}р\n   🔧[{dur}/{dur}] ; 💢[{dmg}] ; 🎯[{acc}]"
-    if acc >= 5 and dmg <= 2:
-     smg.append(line)
-    elif dmg >= 4:
-     snipers.append(line)
-    elif dur <= 2.5:
-     pistols.append(line)
-    else:
-     rifles.append(line)
-   if pistols:
-    msg_lines.extend(pistols)
-   if smg:
-    msg_lines.extend(smg)
-   if rifles:
-    msg_lines.extend(rifles)
-   if snipers:
-    msg_lines.extend(snipers)
-    msg_lines.append("")
+    msg_lines.append(f"{i}️⃣ {name} — 💰{price}р")
+    msg_lines.append(f"   🔧[{dur}/{dur}] ; 💢[{dmg}] ; 🎯[{acc}]")
+   msg_lines.append("")
    msg_lines.append("✍️ Напишите точное название для покупки:")
   else:
+   sorted_items = sorted(items, key=lambda x: x[5])
    msg_lines = [f"💲 Ваши деньги: {money}р", "", f"🦺 БРОНЯ ({faction})", ""]
-   for i, item in enumerate(items, 1):
+   for i, item in enumerate(sorted_items, 1):
     name, dur, shield, blast, anom, price = item
     msg_lines.append(f"{i}️⃣ {name} — 💰{price}р")
     msg_lines.append(f"   🔧[{dur}/{dur}] ; 🛡️[{shield}] ; 🐾[{blast}] ; 💥[{anom}]")
