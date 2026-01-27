@@ -5498,6 +5498,20 @@ if __name__ == "__main__":
                     peer_id = message.get('peer_id', 0)
                     if from_id < 0:
                         continue
+                    attachments = message.get('attachments', [])
+                    if attachments and from_id in players:
+                        pending_target = players[from_id].get("pending_photo_target")
+                        if pending_target and is_admin(from_id):
+                            for att in attachments:
+                                if att.get('type') == 'photo':
+                                    photo = att.get('photo', {})
+                                    sizes = photo.get('sizes', [])
+                                    if sizes:
+                                        best_size = max(sizes, key=lambda x: x.get('width', 0) * x.get('height', 0))
+                                        photo_url = best_size.get('url')
+                                        if photo_url:
+                                            handle_photo_upload(from_id, photo_url, vk_session)
+                                            break
                     if peer_id != from_id:
                         try:
                             handle_chat_message(event, vk_session)
