@@ -1686,26 +1686,31 @@ def init_anomaly_exploration(user_id):
     point = p["point"]
     atype = ANOMALY_ZONES.get(location, {}).get(point, "грави")
     p["current_anomaly_type"] = atype
-    p["player_pos"] = (random.randint(0, 5), random.randint(0, 5))
+    player_start = (random.randint(0, 5), random.randint(0, 5))
+    p["player_pos"] = player_start
     num_artifacts = random.randint(1, 3)
     num_anomalies = random.randint(3, 6)
-    occupied = {p["player_pos"]}
+    occupied = {player_start}
     artifact_positions = []
     for _ in range(num_artifacts):
-        while True:
+        attempts = 0
+        while attempts < 50:
             pos = (random.randint(0, 5), random.randint(0, 5))
             if pos not in occupied:
                 artifact_positions.append(pos)
                 occupied.add(pos)
                 break
+            attempts += 1
     anomaly_positions = []
     for _ in range(num_anomalies):
-        while True:
+        attempts = 0
+        while attempts < 50:
             pos = (random.randint(0, 5), random.randint(0, 5))
             if pos not in occupied:
                 anomaly_positions.append(pos)
                 occupied.add(pos)
                 break
+            attempts += 1
     p["artifact_positions"] = artifact_positions
     p["anomaly_positions"] = anomaly_positions
     p["state"] = STATE_ANOMALY_EXPLORE
@@ -1717,25 +1722,29 @@ def get_detector_alerts(user_id):
     artifact_positions = [tuple(pos) for pos in p.get("artifact_positions", [])]
     anomaly_positions = [tuple(pos) for pos in p.get("anomaly_positions", [])]
     alerts = []
-    anomaly_dirs = set()
-    for ax, ay in anomaly_positions:
-        if abs(ax - px) <= 1 and abs(ay - py) <= 1 and (ax, ay) != (px, py):
-            if ay < py:
-                anomaly_dirs.add("⬆️")
-            if ay > py:
-                anomaly_dirs.add("⬇️")
-            if ax < px:
-                anomaly_dirs.add("⬅️")
-            if ax > px:
-                anomaly_dirs.add("➡️")
+    if detector in ["Медведь", "Велес", "Сварог"]:
+        anomaly_dirs = []
+        for ax, ay in anomaly_positions:
+            if abs(ax - px) <= 1 and abs(ay - py) <= 1 and (ax, ay) != (px, py):
+                direction = ""
+                if ay < py:
+                    direction += "⬆️"
+                if ay > py:
+                    direction += "⬇️"
+                if ax < px:
+                    direction += "⬅️"
+                if ax > px:
+                    direction += "➡️"
+                if direction and direction not in anomaly_dirs:
+                    anomaly_dirs.append(direction)
+        if anomaly_dirs:
+            alerts.append("🚨" + "|".join(anomaly_dirs))
     if detector == "Отклик":
         for ax, ay in artifact_positions:
             if abs(ax - px) <= 1 and abs(ay - py) <= 1 and (ax, ay) != (px, py):
                 alerts.append("✴️✴️✴️")
                 break
     elif detector == "Медведь":
-        if anomaly_dirs:
-            alerts.append("🚨" + "".join(sorted(anomaly_dirs)))
         for ax, ay in artifact_positions:
             dist = max(abs(ax - px), abs(ay - py))
             if dist == 1:
@@ -1744,12 +1753,6 @@ def get_detector_alerts(user_id):
             elif dist == 2:
                 alerts.append("✴️✴️")
                 break
-    elif detector == "Велес":
-        if anomaly_dirs:
-            alerts.append("🚨" + "".join(sorted(anomaly_dirs)))
-    elif detector == "Сварог":
-        if anomaly_dirs:
-            alerts.append("🚨" + "".join(sorted(anomaly_dirs)))
     return " ".join(alerts)
 def generate_anomaly_map_image(user_id):
     p = players[user_id]
