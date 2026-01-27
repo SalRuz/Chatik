@@ -5683,34 +5683,25 @@ if __name__ == "__main__":
                         quote_data = players[from_id].get("pending_quote")
                         if quote_data:
                             background_img = None
-                            title = None
-                            has_photo = False
-                            for att in attachments:
-                                if att.get('type') == 'photo':
-                                    photo = att.get('photo', {})
-                                    sizes = photo.get('sizes', [])
-                                    if sizes:
-                                        best_size = max(sizes, key=lambda x: x.get('width', 0) * x.get('height', 0))
-                                        photo_url = best_size.get('url')
-                                        if photo_url:
-                                            try:
-                                                response = vk_session.http.get(photo_url)
-                                                background_img = Image.open(io.BytesIO(response.content))
-                                                has_photo = True
-                                            except:
-                                                pass
-                                    break
-                            if text.lower() == "нет" or (text.lower().startswith("нет") and len(text) > 3):
-                                if text.lower() == "нет":
-                                    title = None
-                                else:
-                                    parts = text.split(maxsplit=1)
-                                    if len(parts) > 1:
-                                        title = parts[1].strip()
-                            elif has_photo and text:
-                                title = text
-                            elif not has_photo and text.lower() != "нет":
-                                send_message(from_id, "📷 Отправьте фото для фона или напишите «нет» для чёрного фона.\n💡 Можно добавить заголовок: «нет Цитаты великих» или отправить фото с подписью.", None, vk_session, peer_id)
+                            if text.lower() == "нет":
+                                background_img = None
+                            elif attachments:
+                                for att in attachments:
+                                    if att.get('type') == 'photo':
+                                        photo = att.get('photo', {})
+                                        sizes = photo.get('sizes', [])
+                                        if sizes:
+                                            best_size = max(sizes, key=lambda x: x.get('width', 0) * x.get('height', 0))
+                                            photo_url = best_size.get('url')
+                                            if photo_url:
+                                                try:
+                                                    response = vk_session.http.get(photo_url)
+                                                    background_img = Image.open(io.BytesIO(response.content))
+                                                except:
+                                                    pass
+                                        break
+                            else:
+                                send_message(from_id, "📷 Отправьте фото для фона или напишите «нет» для чёрного фона.", None, vk_session)
                                 continue
                             quote_text = quote_data.get("text", "")
                             quote_user_id = quote_data.get("user_id")
@@ -5721,7 +5712,7 @@ if __name__ == "__main__":
                             except:
                                 user_name = "Аноним"
                             avatar_img = get_user_avatar(quote_user_id, vk_session)
-                            img_buffer = generate_quote_image(quote_text, user_name, avatar_img, quote_date, background_img, title)
+                            img_buffer = generate_quote_image(quote_text, user_name, avatar_img, quote_date, background_img)
                             try:
                                 upload_url = vk_session.method("photos.getMessagesUploadServer")["upload_url"]
                                 response = vk_session.http.post(upload_url, files={"photo": ("quote.png", img_buffer, "image/png")})
@@ -5746,14 +5737,14 @@ if __name__ == "__main__":
                             quote_user_id = source_message.get('from_id', 0)
                             quote_timestamp = source_message.get('date', 0)
                             if quote_text and quote_user_id > 0:
-                                quote_date = time.strftime('%d.%m.%Y %H:%M', time.localtime(quote_timestamp))
+                                quote_date = time.strftime('%d.%m.%Y', time.localtime(quote_timestamp))
                                 if from_id not in players:
                                     players[from_id] = {"state": STATE_WAITING_QUOTE_PHOTO, "pending_quote": {"text": quote_text, "user_id": quote_user_id, "date": quote_date}}
                                 else:
                                     players[from_id]["state"] = STATE_WAITING_QUOTE_PHOTO
                                     players[from_id]["pending_quote"] = {"text": quote_text, "user_id": quote_user_id, "date": quote_date}
                                 save_data()
-                                send_message(from_id, "📷 Отправьте фото для фона цитаты или напишите «нет» для чёрного фона.\n💡 Можно добавить заголовок: «нет Цитаты великих» или отправить фото с подписью.", None, vk_session, peer_id)
+                                send_message(from_id, "📷 Отправьте фото для фона цитаты или напишите «нет» для чёрного фона.", None, vk_session, peer_id)
                                 continue
                             else:
                                 send_message(from_id, "❌ Сообщение пустое или от сообщества.", None, vk_session, peer_id)
