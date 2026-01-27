@@ -98,6 +98,7 @@ STATE_WAR_SEND_SQUAD_POINT = "war_send_squad_point"
 STATE_WAR_WITHDRAW_SQUAD = "war_withdraw_squad"
 STATE_WAR_ATTACK_CONFIRM = "war_attack_confirm"
 STATE_WAR_SHARED_SQUADS = "war_shared_squads"
+STATE_WAITING_QUOTE_PHOTO = "waiting_quote_photo"
 POINT_COORDINATES = {"Кордон": {"Б1": (125, 863), "Б2": (100, 693), "Б3": (322, 604), "Б4": (256, 92),"Т1": (85, 791), "Т2": (283, 491), "Т3": (482, 615), "Т4": (130, 434), "Т5": (343, 370),"Л1": (174, 748), "Л2": (142, 573), "Л3": (425, 510), "Л4": (420, 373), "Л5": (325, 253),"ТР1": (180, 648), "ТР2": (236, 546), "ТР3": (245, 400),"А1": (62, 611), "А2": (190, 483), "А3": (500, 413)},"Свалка": {"Б1": (413, 406), "Б2": (661, 192),"Т1": (598, 893), "Т2": (667, 642), "Т3": (227, 451),"Л1": (666, 765), "Л2": (869, 664), "Л3": (879, 390), "Л4": (358, 177),"ТР1": (407, 727), "ТР2": (207, 628), "ТР3": (593, 86),"А1": (471, 578), "А2": (683, 387), "А3": (448, 262)},"Тёмная долина": {"Б1": (288, 858), "Б2": (626, 516), "Б3": (486, 238),"Т1": (503, 441), "Т2": (363, 180), "Т3": (593, 201),"Л1": (583, 790), "Л2": (509, 650), "Л3": (307, 643), "Л4": (308, 452),"ТР1": (381, 374), "ТР2": (464, 136),"А1": (439, 517), "А2": (627, 410)},"Поляна": {"Б1": (491, 806), "Б2": (1310, 521), "Б3": (994, 285),"Т1": (208, 815), "Т2": (1145, 416),"Л1": (127, 615), "Л2": (610, 137),"ТР1": (1070, 695), "ТР2": (568, 558), "ТР3": (457, 348),"А1": (809, 672), "А2": (401, 527), "А3": (724, 329)}}
 SQUAD_COSTS = {1: {"money": 100, "food": 5, "med": 5, "rad": 5}, 3: {"money": 300, "food": 10, "med": 10, "rad": 10}, 5: {"money": 500, "food": 15, "med": 15, "rad": 15}}
 MIN_SQUADS_FOR_POINT = {"База": 5,"Точка ресурсов": 4,"Аномальная зона": 3,"Логово": 2,"Территория": 1}
@@ -1314,6 +1315,113 @@ def handle_exploration(user_id, vk_session):
         return
     save_data()
     send_message(user_id, "\n".join(result_lines), create_main_menu_keyboard(user_id), vk_session)
+def generate_quote_image(quote_text, user_name, avatar_image, date_str, background_image=None):
+    width = 800
+    min_height = 300
+    padding = 40
+    avatar_size = 100
+    try:
+        font_quote = ImageFont.truetype("Graffiti1C.ttf", 28)
+        font_name = ImageFont.truetype("Graffiti1C.ttf", 24)
+        font_date = ImageFont.truetype("Graffiti1C.ttf", 18)
+    except:
+        try:
+            font_quote = ImageFont.truetype("arial.ttf", 28)
+            font_name = ImageFont.truetype("arial.ttf", 24)
+            font_date = ImageFont.truetype("arial.ttf", 18)
+        except:
+            font_quote = ImageFont.load_default()
+            font_name = font_quote
+            font_date = font_quote
+    temp_img = Image.new("RGB", (1, 1))
+    temp_draw = ImageDraw.Draw(temp_img)
+    max_text_width = width - padding * 3 - avatar_size - 20
+    words = quote_text.split()
+    lines = []
+    current_line = ""
+    for word in words:
+        test_line = current_line + " " + word if current_line else word
+        bbox = temp_draw.textbbox((0, 0), test_line, font=font_quote)
+        if bbox[2] - bbox[0] <= max_text_width:
+            current_line = test_line
+        else:
+            if current_line:
+                lines.append(current_line)
+            current_line = word
+    if current_line:
+        lines.append(current_line)
+    line_height = 35
+    text_height = len(lines) * line_height
+    height = max(min_height, text_height + padding * 2 + 80)
+    if background_image:
+        try:
+            bg = background_image.convert("RGB").resize((width, height))
+            enhancer = ImageEnhance.Brightness(bg)
+            bg = enhancer.enhance(0.4)
+        except:
+            bg = Image.new("RGB", (width, height), (20, 20, 20))
+    else:
+        bg = Image.new("RGB", (width, height), (20, 20, 20))
+    img = bg.copy()
+    draw = ImageDraw.Draw(img)
+    if avatar_image:
+        try:
+            avatar = avatar_image.convert("RGBA").resize((avatar_size, avatar_size))
+            mask = Image.new("L", (avatar_size, avatar_size), 0)
+            mask_draw = ImageDraw.Draw(mask)
+            mask_draw.ellipse((0, 0, avatar_size, avatar_size), fill=255)
+            avatar_x = padding
+            avatar_y = (height - avatar_size) // 2 - 20
+            img.paste(avatar, (avatar_x, avatar_y), mask)
+        except Exception as e:
+            logger.error(f"Ошибка аватарки: {e}")
+            avatar_x = padding
+            avatar_y = (height - avatar_size) // 2 - 20
+            draw.ellipse((avatar_x, avatar_y, avatar_x + avatar_size, avatar_y + avatar_size), fill=(60, 60, 60))
+    else:
+        avatar_x = padding
+        avatar_y = (height - avatar_size) // 2 - 20
+        draw.ellipse((avatar_x, avatar_y, avatar_x + avatar_size, avatar_y + avatar_size), fill=(60, 60, 60))
+    name_x = avatar_x + (avatar_size - temp_draw.textbbox((0, 0), user_name, font=font_name)[2]) // 2
+    name_y = avatar_y + avatar_size + 10
+    for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+        draw.text((name_x + dx, name_y + dy), user_name, fill=(0, 0, 0), font=font_name)
+    draw.text((name_x, name_y), user_name, fill=(255, 255, 255), font=font_name)
+    quote_x = padding + avatar_size + 30
+    quote_y = padding
+    draw.text((quote_x - 15, quote_y - 10), "«", fill=(150, 150, 150), font=font_quote)
+    for i, line in enumerate(lines):
+        y = quote_y + i * line_height
+        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            draw.text((quote_x + dx, y + dy), line, fill=(0, 0, 0), font=font_quote)
+        draw.text((quote_x, y), line, fill=(255, 255, 255), font=font_quote)
+    if lines:
+        last_line = lines[-1]
+        last_line_bbox = temp_draw.textbbox((0, 0), last_line, font=font_quote)
+        end_quote_x = quote_x + last_line_bbox[2] - last_line_bbox[0] + 5
+        end_quote_y = quote_y + (len(lines) - 1) * line_height
+        draw.text((end_quote_x, end_quote_y - 10), "»", fill=(150, 150, 150), font=font_quote)
+    date_bbox = temp_draw.textbbox((0, 0), date_str, font=font_date)
+    date_x = width - padding - (date_bbox[2] - date_bbox[0])
+    date_y = height - padding
+    for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+        draw.text((date_x + dx, date_y + dy), date_str, fill=(0, 0, 0), font=font_date)
+    draw.text((date_x, date_y), date_str, fill=(180, 180, 180), font=font_date)
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+    return buffer
+def get_user_avatar(user_id, vk_session):
+    try:
+        user = vk_session.method("users.get", {"user_ids": user_id, "fields": "photo_200"})[0]
+        photo_url = user.get("photo_200")
+        if photo_url:
+            response = vk_session.http.get(photo_url)
+            img = Image.open(io.BytesIO(response.content))
+            return img
+    except Exception as e:
+        logger.error(f"Ошибка получения аватарки: {e}")
+    return None
 def init_territory_exhaustion():
     global territory_exhaustion
     territory_exhaustion = {}
@@ -2764,6 +2872,9 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
         save_data()
         send_message(user_id, f"✅ Игрок {players[target_uid]['nickname']} снят с админки.", None, vk_session)
         send_message(target_uid, "⚠️ Вы больше не администратор бота.", None, vk_session)
+        return True
+    if text_lower == "/цитата":
+        send_message(user_id, "❌ Перешлите сообщение или ответьте на сообщение с командой /цитата", None, vk_session)
         return True
     return False
 def generate_inventory_image(user_id):
@@ -4912,6 +5023,42 @@ def handle_message(event, vk_session):
   if players[user_id].get("mutant_hp", 0) > 0:
    send_message(user_id, "Продолжайте охоту:", create_hunting_keyboard(), vk_session)
    return
+ if state == STATE_WAITING_QUOTE_PHOTO:
+  p = players[user_id]
+  quote_data = p.get("pending_quote")
+  if not quote_data:
+   players[user_id]["state"] = STATE_IN_MENU
+   save_data()
+   send_message(user_id, "❌ Данные цитаты потеряны.", create_main_menu_keyboard(user_id), vk_session)
+   return
+  if text.lower() == "нет":
+   background_img = None
+  else:
+   send_message(user_id, "❌ Отправьте фото для фона или напишите «нет» для чёрного фона.", None, vk_session)
+   return
+  quote_text = quote_data.get("text", "")
+  quote_user_id = quote_data.get("user_id")
+  quote_date = quote_data.get("date", "")
+  try:
+   user_info = vk_session.method("users.get", {"user_ids": quote_user_id, "fields": "first_name"})[0]
+   user_name = user_info.get("first_name", "Аноним")
+  except:
+   user_name = "Аноним"
+  avatar_img = get_user_avatar(quote_user_id, vk_session)
+  img_buffer = generate_quote_image(quote_text, user_name, avatar_img, quote_date, background_img)
+  try:
+   upload_url = vk_session.method("photos.getMessagesUploadServer")["upload_url"]
+   response = vk_session.http.post(upload_url, files={"photo": ("quote.png", img_buffer, "image/png")})
+   result = response.json()
+   photo_data = vk_session.method("photos.saveMessagesPhoto", {"photo": result["photo"], "server": result["server"], "hash": result["hash"]})[0]
+   vk_session.method("messages.send", {"user_id": user_id, "attachment": f"photo{photo_data['owner_id']}_{photo_data['id']}", "random_id": 0, "message": "🖼 Ваша цитата готова!"})
+  except Exception as e:
+   logger.error(f"Ошибка отправки цитаты: {e}")
+   send_message(user_id, "❌ Ошибка генерации цитаты.", None, vk_session)
+  players[user_id]["state"] = STATE_IN_MENU
+  players[user_id].pop("pending_quote", None)
+  save_data()
+  return
 def handle_chat_message(event, vk_session):
     message = event.obj.message
     user_id = message['from_id']
@@ -5504,9 +5651,85 @@ if __name__ == "__main__":
                     message = event.obj.message
                     from_id = message.get('from_id', 0)
                     peer_id = message.get('peer_id', 0)
+                    text = message.get('text', '').strip()
                     if from_id < 0:
                         continue
                     attachments = message.get('attachments', [])
+                    fwd_messages = message.get('fwd_messages', [])
+                    reply_message = message.get('reply_message')
+                    if from_id in players and players[from_id].get("state") == STATE_WAITING_QUOTE_PHOTO:
+                        quote_data = players[from_id].get("pending_quote")
+                        if quote_data:
+                            background_img = None
+                            if text.lower() == "нет":
+                                background_img = None
+                            elif attachments:
+                                for att in attachments:
+                                    if att.get('type') == 'photo':
+                                        photo = att.get('photo', {})
+                                        sizes = photo.get('sizes', [])
+                                        if sizes:
+                                            best_size = max(sizes, key=lambda x: x.get('width', 0) * x.get('height', 0))
+                                            photo_url = best_size.get('url')
+                                            if photo_url:
+                                                try:
+                                                    response = vk_session.http.get(photo_url)
+                                                    background_img = Image.open(io.BytesIO(response.content))
+                                                except:
+                                                    pass
+                                        break
+                            else:
+                                send_message(from_id, "📷 Отправьте фото для фона или напишите «нет» для чёрного фона.", None, vk_session)
+                                continue
+                            quote_text = quote_data.get("text", "")
+                            quote_user_id = quote_data.get("user_id")
+                            quote_date = quote_data.get("date", "")
+                            try:
+                                user_info = vk_session.method("users.get", {"user_ids": quote_user_id, "fields": "first_name"})[0]
+                                user_name = user_info.get("first_name", "Аноним")
+                            except:
+                                user_name = "Аноним"
+                            avatar_img = get_user_avatar(quote_user_id, vk_session)
+                            img_buffer = generate_quote_image(quote_text, user_name, avatar_img, quote_date, background_img)
+                            try:
+                                upload_url = vk_session.method("photos.getMessagesUploadServer")["upload_url"]
+                                response = vk_session.http.post(upload_url, files={"photo": ("quote.png", img_buffer, "image/png")})
+                                result = response.json()
+                                photo_data = vk_session.method("photos.saveMessagesPhoto", {"photo": result["photo"], "server": result["server"], "hash": result["hash"]})[0]
+                                vk_session.method("messages.send", {"peer_id": peer_id, "attachment": f"photo{photo_data['owner_id']}_{photo_data['id']}", "random_id": 0, "message": "🖼 Ваша цитата готова!"})
+                            except Exception as e:
+                                logger.error(f"Ошибка отправки цитаты: {e}")
+                                send_message(from_id, "❌ Ошибка генерации цитаты.", None, vk_session, peer_id)
+                            players[from_id]["state"] = STATE_IN_MENU
+                            players[from_id].pop("pending_quote", None)
+                            save_data()
+                            continue
+                    if text.lower() == "/цитата":
+                        source_message = None
+                        if reply_message:
+                            source_message = reply_message
+                        elif fwd_messages:
+                            source_message = fwd_messages[0]
+                        if source_message:
+                            quote_text = source_message.get('text', '')
+                            quote_user_id = source_message.get('from_id', 0)
+                            quote_timestamp = source_message.get('date', 0)
+                            if quote_text and quote_user_id > 0:
+                                quote_date = time.strftime('%d.%m.%Y', time.localtime(quote_timestamp))
+                                if from_id not in players:
+                                    players[from_id] = {"state": STATE_WAITING_QUOTE_PHOTO, "pending_quote": {"text": quote_text, "user_id": quote_user_id, "date": quote_date}}
+                                else:
+                                    players[from_id]["state"] = STATE_WAITING_QUOTE_PHOTO
+                                    players[from_id]["pending_quote"] = {"text": quote_text, "user_id": quote_user_id, "date": quote_date}
+                                save_data()
+                                send_message(from_id, "📷 Отправьте фото для фона цитаты или напишите «нет» для чёрного фона.", None, vk_session, peer_id)
+                                continue
+                            else:
+                                send_message(from_id, "❌ Сообщение пустое или от сообщества.", None, vk_session, peer_id)
+                                continue
+                        else:
+                            send_message(from_id, "❌ Перешлите сообщение или ответьте на сообщение с командой /цитата", None, vk_session, peer_id)
+                            continue
                     if attachments and from_id in players:
                         pending_target = players[from_id].get("pending_photo_target")
                         if pending_target and is_admin(from_id):
