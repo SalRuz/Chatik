@@ -1315,7 +1315,7 @@ def handle_exploration(user_id, vk_session):
         return
     save_data()
     send_message(user_id, "\n".join(result_lines), create_main_menu_keyboard(user_id), vk_session)
-def generate_quote_image(quote_text, user_name, avatar_image, date_str, background_image=None):
+def generate_quote_image(quote_text, user_name, avatar_image, date_str, background_image=None, title=None):
     width = 800
     min_height = 300
     padding = 40
@@ -1324,15 +1324,18 @@ def generate_quote_image(quote_text, user_name, avatar_image, date_str, backgrou
         font_quote = ImageFont.truetype("Graffiti1C.ttf", 28)
         font_name = ImageFont.truetype("Graffiti1C.ttf", 24)
         font_date = ImageFont.truetype("Graffiti1C.ttf", 18)
+        font_title = ImageFont.truetype("Graffiti1C.ttf", 22)
     except:
         try:
             font_quote = ImageFont.truetype("arial.ttf", 28)
             font_name = ImageFont.truetype("arial.ttf", 24)
             font_date = ImageFont.truetype("arial.ttf", 18)
+            font_title = ImageFont.truetype("arial.ttf", 22)
         except:
             font_quote = ImageFont.load_default()
             font_name = font_quote
             font_date = font_quote
+            font_title = font_quote
     temp_img = Image.new("RGB", (1, 1))
     temp_draw = ImageDraw.Draw(temp_img)
     max_text_width = width - padding * 3 - avatar_size - 20
@@ -1352,7 +1355,8 @@ def generate_quote_image(quote_text, user_name, avatar_image, date_str, backgrou
         lines.append(current_line)
     line_height = 35
     text_height = len(lines) * line_height
-    height = max(min_height, text_height + padding * 2 + 80)
+    title_height = 40 if title else 0
+    height = max(min_height, text_height + padding * 2 + 80 + title_height)
     if background_image:
         try:
             bg = background_image.convert("RGB").resize((width, height))
@@ -1364,6 +1368,15 @@ def generate_quote_image(quote_text, user_name, avatar_image, date_str, backgrou
         bg = Image.new("RGB", (width, height), (20, 20, 20))
     img = bg.copy()
     draw = ImageDraw.Draw(img)
+    top_offset = 0
+    if title:
+        title_bbox = temp_draw.textbbox((0, 0), title, font=font_title)
+        title_x = (width - (title_bbox[2] - title_bbox[0])) // 2
+        title_y = padding // 2
+        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            draw.text((title_x + dx, title_y + dy), title, fill=(0, 0, 0), font=font_title)
+        draw.text((title_x, title_y), title, fill=(255, 215, 0), font=font_title)
+        top_offset = title_height
     if avatar_image:
         try:
             avatar = avatar_image.convert("RGBA").resize((avatar_size, avatar_size))
@@ -1371,24 +1384,25 @@ def generate_quote_image(quote_text, user_name, avatar_image, date_str, backgrou
             mask_draw = ImageDraw.Draw(mask)
             mask_draw.ellipse((0, 0, avatar_size, avatar_size), fill=255)
             avatar_x = padding
-            avatar_y = (height - avatar_size) // 2 - 20
+            avatar_y = (height - avatar_size) // 2 - 20 + top_offset // 2
             img.paste(avatar, (avatar_x, avatar_y), mask)
         except Exception as e:
             logger.error(f"Ошибка аватарки: {e}")
             avatar_x = padding
-            avatar_y = (height - avatar_size) // 2 - 20
+            avatar_y = (height - avatar_size) // 2 - 20 + top_offset // 2
             draw.ellipse((avatar_x, avatar_y, avatar_x + avatar_size, avatar_y + avatar_size), fill=(60, 60, 60))
     else:
         avatar_x = padding
-        avatar_y = (height - avatar_size) // 2 - 20
+        avatar_y = (height - avatar_size) // 2 - 20 + top_offset // 2
         draw.ellipse((avatar_x, avatar_y, avatar_x + avatar_size, avatar_y + avatar_size), fill=(60, 60, 60))
-    name_x = avatar_x + (avatar_size - temp_draw.textbbox((0, 0), user_name, font=font_name)[2]) // 2
+    name_bbox = temp_draw.textbbox((0, 0), user_name, font=font_name)
+    name_x = avatar_x + (avatar_size - (name_bbox[2] - name_bbox[0])) // 2
     name_y = avatar_y + avatar_size + 10
     for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
         draw.text((name_x + dx, name_y + dy), user_name, fill=(0, 0, 0), font=font_name)
     draw.text((name_x, name_y), user_name, fill=(255, 255, 255), font=font_name)
     quote_x = padding + avatar_size + 30
-    quote_y = padding
+    quote_y = padding + top_offset
     draw.text((quote_x - 15, quote_y - 10), "«", fill=(150, 150, 150), font=font_quote)
     for i, line in enumerate(lines):
         y = quote_y + i * line_height
@@ -1401,6 +1415,13 @@ def generate_quote_image(quote_text, user_name, avatar_image, date_str, backgrou
         end_quote_x = quote_x + last_line_bbox[2] - last_line_bbox[0] + 5
         end_quote_y = quote_y + (len(lines) - 1) * line_height
         draw.text((end_quote_x, end_quote_y - 10), "»", fill=(150, 150, 150), font=font_quote)
+    watermark = "@wargroupss"
+    watermark_bbox = temp_draw.textbbox((0, 0), watermark, font=font_date)
+    watermark_x = padding
+    watermark_y = height - padding
+    for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+        draw.text((watermark_x + dx, watermark_y + dy), watermark, fill=(0, 0, 0), font=font_date)
+    draw.text((watermark_x, watermark_y), watermark, fill=(120, 120, 120), font=font_date)
     date_bbox = temp_draw.textbbox((0, 0), date_str, font=font_date)
     date_x = width - padding - (date_bbox[2] - date_bbox[0])
     date_y = height - padding
@@ -5661,25 +5682,34 @@ if __name__ == "__main__":
                         quote_data = players[from_id].get("pending_quote")
                         if quote_data:
                             background_img = None
-                            if text.lower() == "нет":
-                                background_img = None
-                            elif attachments:
-                                for att in attachments:
-                                    if att.get('type') == 'photo':
-                                        photo = att.get('photo', {})
-                                        sizes = photo.get('sizes', [])
-                                        if sizes:
-                                            best_size = max(sizes, key=lambda x: x.get('width', 0) * x.get('height', 0))
-                                            photo_url = best_size.get('url')
-                                            if photo_url:
-                                                try:
-                                                    response = vk_session.http.get(photo_url)
-                                                    background_img = Image.open(io.BytesIO(response.content))
-                                                except:
-                                                    pass
-                                        break
-                            else:
-                                send_message(from_id, "📷 Отправьте фото для фона или напишите «нет» для чёрного фона.", None, vk_session)
+                            title = None
+                            has_photo = False
+                            for att in attachments:
+                                if att.get('type') == 'photo':
+                                    photo = att.get('photo', {})
+                                    sizes = photo.get('sizes', [])
+                                    if sizes:
+                                        best_size = max(sizes, key=lambda x: x.get('width', 0) * x.get('height', 0))
+                                        photo_url = best_size.get('url')
+                                        if photo_url:
+                                            try:
+                                                response = vk_session.http.get(photo_url)
+                                                background_img = Image.open(io.BytesIO(response.content))
+                                                has_photo = True
+                                            except:
+                                                pass
+                                    break
+                            if text.lower() == "нет" or (text.lower().startswith("нет") and len(text) > 3):
+                                if text.lower() == "нет":
+                                    title = None
+                                else:
+                                    parts = text.split(maxsplit=1)
+                                    if len(parts) > 1:
+                                        title = parts[1].strip()
+                            elif has_photo and text:
+                                title = text
+                            elif not has_photo and text.lower() != "нет":
+                                send_message(from_id, "📷 Отправьте фото для фона или напишите «нет» для чёрного фона.\n💡 Можно добавить заголовок: «нет Цитаты великих» или отправить фото с подписью.", None, vk_session, peer_id)
                                 continue
                             quote_text = quote_data.get("text", "")
                             quote_user_id = quote_data.get("user_id")
@@ -5690,7 +5720,7 @@ if __name__ == "__main__":
                             except:
                                 user_name = "Аноним"
                             avatar_img = get_user_avatar(quote_user_id, vk_session)
-                            img_buffer = generate_quote_image(quote_text, user_name, avatar_img, quote_date, background_img)
+                            img_buffer = generate_quote_image(quote_text, user_name, avatar_img, quote_date, background_img, title)
                             try:
                                 upload_url = vk_session.method("photos.getMessagesUploadServer")["upload_url"]
                                 response = vk_session.http.post(upload_url, files={"photo": ("quote.png", img_buffer, "image/png")})
@@ -5715,14 +5745,14 @@ if __name__ == "__main__":
                             quote_user_id = source_message.get('from_id', 0)
                             quote_timestamp = source_message.get('date', 0)
                             if quote_text and quote_user_id > 0:
-                                quote_date = time.strftime('%d.%m.%Y', time.localtime(quote_timestamp))
+                                quote_date = time.strftime('%d.%m.%Y %H:%M', time.localtime(quote_timestamp))
                                 if from_id not in players:
                                     players[from_id] = {"state": STATE_WAITING_QUOTE_PHOTO, "pending_quote": {"text": quote_text, "user_id": quote_user_id, "date": quote_date}}
                                 else:
                                     players[from_id]["state"] = STATE_WAITING_QUOTE_PHOTO
                                     players[from_id]["pending_quote"] = {"text": quote_text, "user_id": quote_user_id, "date": quote_date}
                                 save_data()
-                                send_message(from_id, "📷 Отправьте фото для фона цитаты или напишите «нет» для чёрного фона.", None, vk_session, peer_id)
+                                send_message(from_id, "📷 Отправьте фото для фона цитаты или напишите «нет» для чёрного фона.\n💡 Можно добавить заголовок: «нет Цитаты великих» или отправить фото с подписью.", None, vk_session, peer_id)
                                 continue
                             else:
                                 send_message(from_id, "❌ Сообщение пустое или от сообщества.", None, vk_session, peer_id)
