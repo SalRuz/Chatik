@@ -3807,6 +3807,7 @@ def handle_message(event, vk_session):
   return
  user_id = event.user_id
  text = event.text.strip() if hasattr(event, 'text') else ""
+ text_lower = text.lower()
  if user_id in banned_users:
   reason = banned_users.get(user_id, "Причина не указана")
   send_message(user_id, f"🚫 Вы заблокированы в игре.\n📝 Причина: {reason}", None, vk_session)
