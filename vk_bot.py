@@ -5673,85 +5673,9 @@ if __name__ == "__main__":
                     message = event.obj.message
                     from_id = message.get('from_id', 0)
                     peer_id = message.get('peer_id', 0)
-                    text = message.get('text', '').strip()
                     if from_id < 0:
                         continue
                     attachments = message.get('attachments', [])
-                    fwd_messages = message.get('fwd_messages', [])
-                    reply_message = message.get('reply_message')
-                    if from_id in players and players[from_id].get("state") == STATE_WAITING_QUOTE_PHOTO:
-                        quote_data = players[from_id].get("pending_quote")
-                        if quote_data:
-                            background_img = None
-                            if text.lower() == "нет":
-                                background_img = None
-                            elif attachments:
-                                for att in attachments:
-                                    if att.get('type') == 'photo':
-                                        photo = att.get('photo', {})
-                                        sizes = photo.get('sizes', [])
-                                        if sizes:
-                                            best_size = max(sizes, key=lambda x: x.get('width', 0) * x.get('height', 0))
-                                            photo_url = best_size.get('url')
-                                            if photo_url:
-                                                try:
-                                                    response = vk_session.http.get(photo_url)
-                                                    background_img = Image.open(io.BytesIO(response.content))
-                                                except:
-                                                    pass
-                                        break
-                            else:
-                                send_message(from_id, "📷 Отправьте фото для фона или напишите «нет» для чёрного фона.", None, vk_session)
-                                continue
-                            quote_text = quote_data.get("text", "")
-                            quote_user_id = quote_data.get("user_id")
-                            quote_date = quote_data.get("date", "")
-                            try:
-                                user_info = vk_session.method("users.get", {"user_ids": quote_user_id, "fields": "first_name"})[0]
-                                user_name = user_info.get("first_name", "Аноним")
-                            except:
-                                user_name = "Аноним"
-                            avatar_img = get_user_avatar(quote_user_id, vk_session)
-                            img_buffer = generate_quote_image(quote_text, user_name, avatar_img, quote_date, background_img)
-                            try:
-                                upload_url = vk_session.method("photos.getMessagesUploadServer")["upload_url"]
-                                response = vk_session.http.post(upload_url, files={"photo": ("quote.png", img_buffer, "image/png")})
-                                result = response.json()
-                                photo_data = vk_session.method("photos.saveMessagesPhoto", {"photo": result["photo"], "server": result["server"], "hash": result["hash"]})[0]
-                                vk_session.method("messages.send", {"peer_id": peer_id, "attachment": f"photo{photo_data['owner_id']}_{photo_data['id']}", "random_id": 0, "message": "🖼 Ваша цитата готова!"})
-                            except Exception as e:
-                                logger.error(f"Ошибка отправки цитаты: {e}")
-                                send_message(from_id, "❌ Ошибка генерации цитаты.", None, vk_session, peer_id)
-                            players[from_id]["state"] = STATE_IN_MENU
-                            players[from_id].pop("pending_quote", None)
-                            save_data()
-                            continue
-                    if text.lower() == "/цитата":
-                        source_message = None
-                        if reply_message:
-                            source_message = reply_message
-                        elif fwd_messages:
-                            source_message = fwd_messages[0]
-                        if source_message:
-                            quote_text = source_message.get('text', '')
-                            quote_user_id = source_message.get('from_id', 0)
-                            quote_timestamp = source_message.get('date', 0)
-                            if quote_text and quote_user_id > 0:
-                                quote_date = time.strftime('%d.%m.%Y', time.localtime(quote_timestamp))
-                                if from_id not in players:
-                                    players[from_id] = {"state": STATE_WAITING_QUOTE_PHOTO, "pending_quote": {"text": quote_text, "user_id": quote_user_id, "date": quote_date}}
-                                else:
-                                    players[from_id]["state"] = STATE_WAITING_QUOTE_PHOTO
-                                    players[from_id]["pending_quote"] = {"text": quote_text, "user_id": quote_user_id, "date": quote_date}
-                                save_data()
-                                send_message(from_id, "📷 Отправьте фото для фона цитаты или напишите «нет» для чёрного фона.", None, vk_session, peer_id)
-                                continue
-                            else:
-                                send_message(from_id, "❌ Сообщение пустое или от сообщества.", None, vk_session, peer_id)
-                                continue
-                        else:
-                            send_message(from_id, "❌ Перешлите сообщение или ответьте на сообщение с командой /цитата", None, vk_session, peer_id)
-                            continue
                     if attachments and from_id in players:
                         pending_target = players[from_id].get("pending_photo_target")
                         if pending_target and is_admin(from_id):
