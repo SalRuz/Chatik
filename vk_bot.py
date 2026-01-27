@@ -3466,21 +3466,21 @@ def handle_equipment_buy_confirmation(user_id, text, vk_session):
         item_type = p.get("pending_buy_type")
         faction = p["faction"]
         if item_type == "detector" and p.get("detector"):
-            send_message(user_id, f"❌ У вас уже есть детектор: {p['detector']}.", create_equipment_category_keyboard(), vk_session)
+            send_message(user_id, f"❌ У вас уже есть детектор: {p['detector']}. Сначала продайте его.", create_equipment_category_keyboard(), vk_session)
             p["state"] = STATE_TRADER_BUY_EQUIPMENT
             p["pending_buy_item"] = None
             p["pending_buy_type"] = None
             save_data()
             return
         if item_type == "weapon" and p.get("weapon"):
-            send_message(user_id, f"❌ У вас уже есть оружие: {p['weapon']}.", create_equipment_category_keyboard(), vk_session)
+            send_message(user_id, f"❌ У вас уже есть оружие: {p['weapon']}. Сначала продайте его.", create_equipment_category_keyboard(), vk_session)
             p["state"] = STATE_TRADER_BUY_EQUIPMENT
             p["pending_buy_item"] = None
             p["pending_buy_type"] = None
             save_data()
             return
         if item_type == "armor" and p.get("armor"):
-            send_message(user_id, f"❌ У вас уже есть броня: {p['armor']}.", create_equipment_category_keyboard(), vk_session)
+            send_message(user_id, f"❌ У вас уже есть броня: {p['armor']}. Сначала продайте её.", create_equipment_category_keyboard(), vk_session)
             p["state"] = STATE_TRADER_BUY_EQUIPMENT
             p["pending_buy_item"] = None
             p["pending_buy_type"] = None
@@ -4047,11 +4047,7 @@ def handle_message(event, vk_session):
    return
   faction = players[user_id]["faction"]
   money = players[user_id].get("money", 0)
-  p = players[user_id]
   if eq_type == "detector":
-   if p.get("detector"):
-    send_message(user_id, f"❌ У вас уже есть детектор: {p['detector']}. Сначала продайте его.", create_equipment_category_keyboard(), vk_session)
-    return
    msg_lines = [f"💲 Ваши деньги: {money}р", "", "📟 ДЕТЕКТОРЫ", ""]
    sorted_detectors = sorted(DETECTORS.items(), key=lambda x: x[1]["price"])
    num = 1
@@ -4066,12 +4062,6 @@ def handle_message(event, vk_session):
    players[user_id]["pending_buy_type"] = "detector"
    players[user_id]["state"] = STATE_TRADER_BUY_EQUIPMENT_CONFIRM
    save_data()
-   return
-  if eq_type == "weapon" and p.get("weapon"):
-   send_message(user_id, f"❌ У вас уже есть оружие: {p['weapon']}. Сначала продайте его.", create_equipment_category_keyboard(), vk_session)
-   return
-  if eq_type == "armor" and p.get("armor"):
-   send_message(user_id, f"❌ У вас уже есть броня: {p['armor']}. Сначала продайте её.", create_equipment_category_keyboard(), vk_session)
    return
   items = EQUIPMENT[faction][eq_type]
   if eq_type == "weapon":
