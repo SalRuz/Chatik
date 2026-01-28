@@ -592,6 +592,17 @@ def get_user_info(user_id, vk_session):
     except Exception as e:
         logger.error(f"Ошибка получения имени: {e}")
         return "друг", ""
+def get_user_avatar(user_id, vk_session):
+    try:
+        user = vk_session.method("users.get", {"user_ids": user_id, "fields": "photo_200"})[0]
+        photo_url = user.get("photo_200")
+        if photo_url:
+            response = vk_session.http.get(photo_url)
+            img = Image.open(io.BytesIO(response.content))
+            return img
+    except Exception as e:
+        logger.error(f"Ошибка получения аватарки: {e}")
+    return None
 def send_message(user_id, message, keyboard=None, vk_session=None, peer_id=None):
     if vk_session is None:
         logger.error("❌ vk_session не передан в send_message")
