@@ -3022,6 +3022,187 @@ def generate_warehouse_image():
     img.save(buffer, format="PNG")
     buffer.seek(0)
     return buffer
+def generate_quote_image(quote_text, user_name, avatar_image, date_str, background_image=None, title=None):
+    width = 800
+    min_height = 300
+    padding = 40
+    avatar_size = 100
+    try:
+        font_quote = ImageFont.truetype("Graffiti1C.ttf", 28)
+        font_name = ImageFont.truetype("Graffiti1C.ttf", 24)
+        font_date = ImageFont.truetype("Graffiti1C.ttf", 18)
+        font_title = ImageFont.truetype("Graffiti1C.ttf", 22)
+    except:
+        try:
+            font_quote = ImageFont.truetype("arial.ttf", 28)
+            font_name = ImageFont.truetype("arial.ttf", 24)
+            font_date = ImageFont.truetype("arial.ttf", 18)
+            font_title = ImageFont.truetype("arial.ttf", 22)
+        except:
+            font_quote = ImageFont.load_default()
+            font_name = font_quote
+            font_date = font_quote
+            font_title = font_quote
+    temp_img = Image.new("RGB", (1, 1))
+    temp_draw = ImageDraw.Draw(temp_img)
+    max_text_width = width - padding * 3 - avatar_size - 20
+    words = quote_text.split()
+    lines = []
+    current_line = ""
+    for word in words:
+        test_line = current_line + " " + word if current_line else word
+        bbox = temp_draw.textbbox((0, 0), test_line, font=font_quote)
+        if bbox[2] - bbox[0] <= max_text_width:
+            current_line = test_line
+        else:
+            if current_line:
+                lines.append(current_line)
+            current_line = word
+    if current_line:
+        lines.append(current_line)
+    line_height = 35
+    text_height = len(lines) * line_height
+    title_height = 40 if title else 0
+    height = max(min_height, text_height + padding * 2 + 80 + title_height)
+    if background_image:
+        try:
+            bg = background_image.convert("RGB").resize((width, height))
+            enhancer = ImageEnhance.Brightness(bg)
+            bg = enhancer.enhance(0.4)
+        except:
+            bg = Image.new("RGB", (width, height), (20, 20, 20))
+    else:
+        bg = Image.new("RGB", (width, height), (20, 20, 20))
+    img = bg.copy()
+    draw = ImageDraw.Draw(img)
+    top_offset = 0
+    if title:
+        title_bbox = temp_draw.textbbox((0, 0), title, font=font_title)
+        title_x = (width - (title_bbox[2] - title_bbox[0])) // 2
+        title_y = padding // 2
+        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            draw.text((title_x + dx, title_y + dy), title, fill=(0, 0, 0), font=font_title)
+        draw.text((title_x, title_y), title, fill=(255, 215, 0), font=font_title)
+        top_offset = title_height
+    if avatar_image:
+        try:
+            avatar = avatar_image.convert("RGBA").resize((avatar_size, avatar_size))
+            mask = Image.new("L", (avatar_size, avatar_size), 0)
+            mask_draw = ImageDraw.Draw(mask)
+            mask_draw.ellipse((0, 0, avatar_size, avatar_size), fill=255)
+            avatar_x = padding
+            avatar_y = (height - avatar_size) // 2 - 20 + top_offset // 2
+            img.paste(avatar, (avatar_x, avatar_y), mask)
+        except:
+            avatar_x = padding
+            avatar_y = (height - avatar_size) // 2 - 20 + top_offset // 2
+            draw.ellipse((avatar_x, avatar_y, avatar_x + avatar_size, avatar_y + avatar_size), fill=(60, 60, 60))
+    else:
+        avatar_x = padding
+        avatar_y = (height - avatar_size) // 2 - 20 + top_offset // 2
+        draw.ellipse((avatar_x, avatar_y, avatar_x + avatar_size, avatar_y + avatar_size), fill=(60, 60, 60))
+    name_bbox = temp_draw.textbbox((0, 0), user_name, font=font_name)
+    name_x = avatar_x + (avatar_size - (name_bbox[2] - name_bbox[0])) // 2
+    name_y = avatar_y + avatar_size + 10
+    for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+        draw.text((name_x + dx, name_y + dy), user_name, fill=(0, 0, 0), font=font_name)
+    draw.text((name_x, name_y), user_name, fill=(255, 255, 255), font=font_name)
+    quote_x = padding + avatar_size + 30
+    quote_y = padding + top_offset
+    draw.text((quote_x - 15, quote_y - 10), "«", fill=(150, 150, 150), font=font_quote)
+    for i, line in enumerate(lines):
+        y = quote_y + i * line_height
+        for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            draw.text((quote_x + dx, y + dy), line, fill=(0, 0, 0), font=font_quote)
+        draw.text((quote_x, y), line, fill=(255, 255, 255), font=font_quote)
+    if lines:
+        last_line = lines[-1]
+        last_line_bbox = temp_draw.textbbox((0, 0), last_line, font=font_quote)
+        end_quote_x = quote_x + last_line_bbox[2] - last_line_bbox[0] + 5
+        end_quote_y = quote_y + (len(lines) - 1) * line_height
+        draw.text((end_quote_x, end_quote_y - 10), "»", fill=(150, 150, 150), font=font_quote)
+    watermark = "@wargroupss"
+    watermark_x = padding
+    watermark_y = height - padding
+    for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+        draw.text((watermark_x + dx, watermark_y + dy), watermark, fill=(0, 0, 0), font=font_date)
+    draw.text((watermark_x, watermark_y), watermark, fill=(120, 120, 120), font=font_date)
+    date_bbox = temp_draw.textbbox((0, 0), date_str, font=font_date)
+    date_x = width - padding - (date_bbox[2] - date_bbox[0])
+    date_y = height - padding
+    for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+        draw.text((date_x + dx, date_y + dy), date_str, fill=(0, 0, 0), font=font_date)
+    draw.text((date_x, date_y), date_str, fill=(180, 180, 180), font=font_date)
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+    return buffer
+def process_quote_request(user_id, quote_text, quote_user_id, quote_timestamp, peer_id, vk_session):
+    if not quote_text or quote_user_id <= 0:
+        send_message(user_id, "❌ Сообщение пустое или от сообщества.", None, vk_session, peer_id)
+        return False
+    quote_date = time.strftime('%d.%m.%Y %H:%M', time.localtime(quote_timestamp))
+    if user_id not in players:
+        players[user_id] = {"state": STATE_WAITING_QUOTE_PHOTO, "pending_quote": {"text": quote_text, "user_id": quote_user_id, "date": quote_date}}
+    else:
+        players[user_id]["state"] = STATE_WAITING_QUOTE_PHOTO
+        players[user_id]["pending_quote"] = {"text": quote_text, "user_id": quote_user_id, "date": quote_date}
+    save_data()
+    send_message(user_id, "📷 Отправьте фото для фона или напишите «нет» для чёрного фона.\n💡 Заголовок: «нет Цитаты великих» или фото с подписью.", None, vk_session, peer_id)
+    return True
+def process_quote_photo(user_id, text, photo_attachment, peer_id, vk_session):
+    p = players.get(user_id)
+    if not p:
+        return False
+    quote_data = p.get("pending_quote")
+    if not quote_data:
+        return False
+    background_img = None
+    title = None
+    if photo_attachment:
+        sizes = photo_attachment.get('sizes', [])
+        if sizes:
+            best_size = max(sizes, key=lambda x: x.get('width', 0) * x.get('height', 0))
+            photo_url = best_size.get('url')
+            if photo_url:
+                try:
+                    resp = vk_session.http.get(photo_url)
+                    background_img = Image.open(io.BytesIO(resp.content))
+                except:
+                    pass
+        if text:
+            title = text
+    elif text.lower() == "нет":
+        background_img = None
+        title = None
+    elif text.lower().startswith("нет "):
+        background_img = None
+        title = text[4:].strip()
+    else:
+        return False
+    quote_text = quote_data.get("text", "")
+    quote_user_id = quote_data.get("user_id")
+    quote_date = quote_data.get("date", "")
+    try:
+        user_info = vk_session.method("users.get", {"user_ids": quote_user_id, "fields": "first_name"})[0]
+        user_name = user_info.get("first_name", "Аноним")
+    except:
+        user_name = "Аноним"
+    avatar_img = get_user_avatar(quote_user_id, vk_session)
+    img_buffer = generate_quote_image(quote_text, user_name, avatar_img, quote_date, background_img, title)
+    try:
+        upload_url = vk_session.method("photos.getMessagesUploadServer")["upload_url"]
+        resp = vk_session.http.post(upload_url, files={"photo": ("quote.png", img_buffer, "image/png")})
+        result = resp.json()
+        photo_data = vk_session.method("photos.saveMessagesPhoto", {"photo": result["photo"], "server": result["server"], "hash": result["hash"]})[0]
+        vk_session.method("messages.send", {"peer_id": peer_id, "attachment": f"photo{photo_data['owner_id']}_{photo_data['id']}", "random_id": 0, "message": "🖼 Ваша цитата готова!"})
+    except Exception as e:
+        logger.error(f"Ошибка отправки цитаты: {e}")
+        send_message(user_id, "❌ Ошибка генерации цитаты.", None, vk_session, peer_id)
+    p["state"] = STATE_IN_MENU
+    p.pop("pending_quote", None)
+    save_data()
+    return True
 def generate_artifacts_info_image():
     categories = [
         ("Восстановление здоровья ❤️", ["Кровь камня", "Ломоть мяса", "Душа", "Светляк"], ["+0.25", "+0.5", "+0.75", "+1"]),
@@ -3691,6 +3872,8 @@ def handle_message(event, vk_session):
  if user_id in banned_users:
   reason = banned_users.get(user_id, "Причина не указана")
   send_message(user_id, f"🚫 Вы заблокированы в игре.\n📝 Причина: {reason}", None, vk_session)
+  return
+ if user_id in players and players[user_id].get("state") == STATE_WAITING_QUOTE_PHOTO:
   return
  if user_id in players:
   if handle_global_commands(user_id, text, vk_session):
@@ -5553,9 +5736,31 @@ if __name__ == "__main__":
                     message = event.obj.message
                     from_id = message.get('from_id', 0)
                     peer_id = message.get('peer_id', 0)
+                    msg_text = message.get('text', '').strip()
                     if from_id < 0:
                         continue
                     attachments = message.get('attachments', [])
+                    fwd_messages = message.get('fwd_messages', [])
+                    reply_message = message.get('reply_message')
+                    if from_id in players and players[from_id].get("state") == STATE_WAITING_QUOTE_PHOTO:
+                        photo_att = None
+                        for att in attachments:
+                            if att.get('type') == 'photo':
+                                photo_att = att.get('photo', {})
+                                break
+                        if photo_att or msg_text.lower().startswith("нет"):
+                            process_quote_photo(from_id, msg_text, photo_att, peer_id, vk_session)
+                            continue
+                        else:
+                            send_message(from_id, "📷 Отправьте фото или напишите «нет».", None, vk_session, peer_id)
+                            continue
+                    if msg_text.lower() == "/цитата":
+                        source_msg = reply_message if reply_message else (fwd_messages[0] if fwd_messages else None)
+                        if source_msg:
+                            process_quote_request(from_id, source_msg.get('text', ''), source_msg.get('from_id', 0), source_msg.get('date', 0), peer_id, vk_session)
+                        else:
+                            send_message(from_id, "❌ Ответьте на сообщение или перешлите его с командой /цитата", None, vk_session, peer_id)
+                        continue
                     if attachments and from_id in players:
                         pending_target = players[from_id].get("pending_photo_target")
                         if pending_target and is_admin(from_id):
@@ -5569,6 +5774,7 @@ if __name__ == "__main__":
                                         if photo_url:
                                             handle_photo_upload(from_id, photo_url, vk_session)
                                             break
+                            continue
                     if peer_id != from_id:
                         try:
                             handle_chat_message(event, vk_session)
