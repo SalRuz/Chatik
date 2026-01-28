@@ -2767,9 +2767,6 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
         send_message(user_id, f"✅ Игрок {players[target_uid]['nickname']} снят с админки.", None, vk_session)
         send_message(target_uid, "⚠️ Вы больше не администратор бота.", None, vk_session)
         return True
-    if text_lower == "/цитата":
-        send_message(user_id, "❌ Перешлите сообщение или ответьте на сообщение с командой /цитата", None, vk_session)
-        return True
     return False
 def generate_inventory_image(user_id):
     p = players[user_id]
