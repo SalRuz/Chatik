@@ -1296,6 +1296,11 @@ def handle_exploration(user_id, vk_session):
     drops = {}
     if ptype == "Территория":
         drops = roll_drops(DROP_T, "Территория")
+        if location == "Поляна" and point.startswith("Т"):
+        for item, data in DROP_POLYANA_T.items():
+            if random.randint(1, 100) <= data["chance"]:
+                amount = random.randint(data["min"], data["max"])
+                drops[item] = drops.get(item, 0) + amount
     elif ptype == "Точка ресурсов":
         drops = roll_drops(DROP_TR, "Точка ресурсов")
     elif ptype == "База":
@@ -1328,7 +1333,7 @@ def handle_exploration(user_id, vk_session):
         return
     save_data()
     send_message(user_id, "\n".join(result_lines), create_main_menu_keyboard(user_id), vk_session)
-    
+
 def init_territory_exhaustion():
     global territory_exhaustion
     territory_exhaustion = {}
@@ -3191,7 +3196,8 @@ def process_quote_request(user_id, quote_text, quote_user_id, quote_timestamp, p
     if not quote_text or quote_user_id <= 0:
         send_message(user_id, "❌ Сообщение пустое или от сообщества.", None, vk_session, peer_id)
         return False
-    quote_date = time.strftime('%d.%m.%Y %H:%M', time.localtime(quote_timestamp))
+    moscow_time = quote_timestamp + 3 * 3600
+    quote_date = time.strftime('%d.%m.%Y %H:%M', time.gmtime(moscow_time))
     if user_id not in players:
         players[user_id] = {"state": STATE_WAITING_QUOTE_PHOTO, "pending_quote": {"text": quote_text, "user_id": quote_user_id, "date": quote_date}}
     else:
