@@ -491,6 +491,8 @@ def load_data():
     last_restored_categories = load_state("last_restored_categories", [])
     faction_shared_squads = load_state("faction_shared_squads", {"🛡️ Долг": 0, "☦️ Грех": 0, "☢️ Одиночки": 0})
     banned_users = load_state("banned_users", {})
+    global bot_stopped
+    bot_stopped = load_state("bot_stopped", False)
     if isinstance(banned_users, list):
         banned_users = {uid: "Причина не указана" for uid in banned_users}
     admin_users = load_state("admin_users", [])
@@ -524,6 +526,7 @@ def save_data():
         save_state("banned_users", banned_users)
         save_state("admin_users", admin_users)
         save_state("max_faction_sizes", MAX_FACTION_SIZES)
+        save_state("bot_stopped", bot_stopped)
         conn.commit()
         conn.close()
         logger.debug("💾 Данные сохранены в SQLite.")
@@ -2833,6 +2836,17 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
         send_message(user_id, f"✅ Игрок {players[target_uid]['nickname']} снят с админки.", None, vk_session)
         send_message(target_uid, "⚠️ Вы больше не администратор бота.", None, vk_session)
         return True
+    if text == "/стоп" and user_id == 353430025:
+        global bot_stopped
+        bot_stopped = True
+        save_data()
+        send_message(user_id, "🛑 Бот остановлен. Новые сообщения не обрабатываются.", None, vk_session)
+        return True
+    if text == "/старт" and user_id == 353430025:
+        bot_stopped = False
+        save_data()
+        send_message(user_id, "✅ Бот запущен.", None, vk_session)
+        return True
     return False
 def generate_inventory_image(user_id):
     p = players[user_id]
@@ -3929,6 +3943,11 @@ def handle_message(event, vk_session):
   reason = banned_users.get(user_id, "Причина не указана")
   send_message(user_id, f"🚫 Вы заблокированы в игре.\n📝 Причина: {reason}", None, vk_session)
   return
+ if bot_stopped and user_id != 353430025:
+  state = players.get(user_id, {}).get("state")
+  if state not in [STATE_WAITING_FOR_START, STATE_READING_INSTRUCTIONS, STATE_CHOOSING_FACTION, STATE_ENTERING_NICKNAME, None]:
+   send_message(user_id, "⏸ Бот временно остановлен. Попробуйте позже.", None, vk_session)
+   return
  if user_id in players and players[user_id].get("state") == STATE_WAITING_QUOTE_PHOTO:
   return
  if user_id in players:
@@ -4396,6 +4415,9 @@ def handle_message(event, vk_session):
   return
  if state == STATE_WAITING_FOR_START:
   if text == "Старт":
+   if not is_game_open():
+    send_message(user_id, "⏳ Игра пока закрыта. Дождитесь заполнения всех группировок.", create_start_keyboard(), vk_session)
+    return
    players[user_id]["state"] = STATE_READING_INSTRUCTIONS
    save_data()
    send_message(user_id, GAME_INFO_TEXT, create_next_keyboard(), vk_session)
@@ -4418,6 +4440,7 @@ def handle_message(event, vk_session):
    if len(factions[faction_name]) >= MAX_FACTION_SIZES[faction_name]:
     send_message(user_id, f"❌ В группировке «{faction_name}» уже максимум игроков. Выбери другую.", create_faction_keyboard(), vk_session)
    else:
+    was_closed = not is_game_open()
     factions[faction_name].append(user_id)
     players[user_id]["faction"] = faction_name
     start_loc, start_point = find_start_position(faction_name)
@@ -4427,6 +4450,8 @@ def handle_message(event, vk_session):
     save_data()
     chat_link = FACTION_CHAT_LINKS.get(faction_name, "")
     send_message(user_id, f"✅ Вы вступили в группировку {faction_name}!\n\n💬 Ссылка на беседу группировки:\n{chat_link}\n\nТеперь придумай себе кличку в Зоне:", None, vk_session)
+    if was_closed and is_game_open():
+     notify_game_opened(vk_session)
    return
  if state == STATE_ENTERING_NICKNAME:
   nickname = text.strip()
@@ -5776,6 +5801,18 @@ def handle_chat_message(event, vk_session):
             save_data()
             send_message(user_id, f"✅ {players[target_uid]['nickname']} снят с админки.", None, vk_session, peer_id)
             send_message(target_uid, "⚠️ Вы больше не админ.", None, vk_session)
+            return
+    if user_id == 353430025:
+        if text_lower == "/стоп":
+            global bot_stopped
+            bot_stopped = True
+            save_data()
+            send_message(user_id, "🛑 Бот остановлен.", None, vk_session, peer_id)
+            return
+        if text_lower == "/старт":
+            bot_stopped = False
+            save_data()
+            send_message(user_id, "✅ Бот запущен.", None, vk_session, peer_id)
             return
 if __name__ == "__main__":
     load_data()
