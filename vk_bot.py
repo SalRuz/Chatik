@@ -1300,10 +1300,10 @@ def handle_exploration(user_id, vk_session):
     if ptype == "Территория":
         drops = roll_drops(DROP_T, "Территория")
         if location == "Поляна" and point.startswith("Т"):
-        for item, data in DROP_POLYANA_T.items():
-            if random.randint(1, 100) <= data["chance"]:
-                amount = random.randint(data["min"], data["max"])
-                drops[item] = drops.get(item, 0) + amount
+    for item, data in DROP_POLYANA_T.items():
+        if random.randint(1, 100) <= data["chance"]:
+            amount = random.randint(data["min"], data["max"])
+            drops[item] = drops.get(item, 0) + amount
     elif ptype == "Точка ресурсов":
         drops = roll_drops(DROP_TR, "Точка ресурсов")
     elif ptype == "База":
