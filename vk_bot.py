@@ -1982,6 +1982,19 @@ def use_item(user_id, item_input, vk_session, from_global_command=False):
         return
     effects = ITEM_EFFECTS[item_name]
     messages = []
+    if effects.get("random_effect"):
+        for _ in range(count):
+            effect_msg = apply_random_effect(user_id, vk_session)
+            messages.append(f"🌰 Желудь: {effect_msg}")
+        backpack[item_name] -= count
+        if backpack[item_name] <= 0:
+            del backpack[item_name]
+        save_data()
+        if from_global_command:
+            send_message(user_id, "\n".join(messages), None, vk_session)
+        else:
+            send_message(user_id, "\n".join(messages), create_backpack_menu_keyboard(), vk_session)
+        return
     for attr, value in effects.items():
         total_value = value * count
         if attr == "health":
@@ -2020,6 +2033,32 @@ def use_item(user_id, item_input, vk_session, from_global_command=False):
         send_message(user_id, "\n".join(messages), None, vk_session)
     else:
         send_message(user_id, "\n".join(messages), create_backpack_menu_keyboard(), vk_session)
+def apply_random_effect(user_id, vk_session):
+    p = players[user_id]
+    effects = [
+        ("health", 0.5, "❤️ +0.5 здоровья"),
+        ("health", -0.5, "💔 -0.5 здоровья"),
+        ("radiation", 0.5, "☢️ +0.5 радиации"),
+        ("radiation", -0.5, "☢️ -0.5 радиации"),
+        ("hunger", 0.5, "🍽️ +0.5 голода"),
+        ("hunger", -0.5, "🍽️ -0.5 голода"),
+        ("stamina", 0.5, "⚡ +0.5 выносливости"),
+        ("stamina", -0.5, "⚡ -0.5 выносливости"),
+    ]
+    effect = random.choice(effects)
+    attr, value, msg = effect
+    if attr == "money":
+        p["money"] = max(0, p.get("money", 0) + int(value))
+    elif attr == "health":
+        p["health"] = max(0, min(10, p["health"] + value))
+    elif attr == "radiation":
+        p["radiation"] = max(0, min(10, p["radiation"] + value))
+    elif attr == "hunger":
+        p["hunger"] = max(0, min(10, p["hunger"] + value))
+    elif attr == "stamina":
+        p["stamina"] = max(0, min(10, p["stamina"] + value))
+    save_data()
+    return msg
 def find_player_by_mention_or_nickname(target, vk_session):
     target = target.strip()
     if target.startswith('@'):
@@ -2034,6 +2073,15 @@ def find_player_by_mention_or_nickname(target, vk_session):
     return None
 def is_admin(user_id):
     return user_id == 353430025 or user_id in admin_users
+def is_game_open():
+    for faction in factions:
+        if len(factions[faction]) < MAX_FACTION_SIZES[faction]:
+            return False
+    return True
+def notify_game_opened(vk_session):
+    for uid in players:
+        if players[uid].get("state") not in [STATE_WAITING_FOR_START, STATE_READING_INSTRUCTIONS, STATE_CHOOSING_FACTION, STATE_ENTERING_NICKNAME]:
+            send_message(uid, "🎮 Игра теперь открыта для новых игроков! Все группировки заполнены.", None, vk_session)
 def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
     text_original = text.strip()
     text = text_original.lower()
