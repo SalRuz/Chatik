@@ -2534,22 +2534,32 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
         if target_uid != user_id:
             send_message(target_uid, f"🎁 Вам активирован донат на {duration_str}!\n🌕 Артефакт: {artifact}\n⏰ Действует до: {end_time_str}", None, vk_session)
         return True
-    if text.startswith("/фото") and user_id == 353430025:
-        parts = text.split(maxsplit=1)
-        if len(parts) < 2:
-            send_message(user_id, "Укажите ник игрока после /фото", None, vk_session)
-            return True
-        target_nick = parts[1].strip()
-        target_uid = find_player_by_mention_or_nickname(target_nick, vk_session)
-        if not target_uid:
-            if target_nick.lower() == players[user_id]["nickname"].lower():
-                target_uid = user_id
-            else:
-                send_message(user_id, "❌ Игрок не найден.", None, vk_session)
-                return True
-        players[user_id]["pending_photo_target"] = target_uid
-        send_message(user_id, f"Прикрепите фото для игрока {target_nick}:", None, vk_session)
+if text.startswith("/фото") and user_id == 353430025:
+    parts = text_original.split(maxsplit=1)  
+    if len(parts) < 2:
+        send_message(user_id, "Укажите ник игрока после /фото", None, vk_session)
         return True
+    target_nick = parts[1].strip()
+    target_uid = None
+    for uid, data in players.items():
+        if data.get("nickname", "").lower() == target_nick.lower():
+            target_uid = uid
+            break
+    if not target_uid:
+        for uid, data in players.items():
+            nickname = data.get("nickname", "")
+            if target_nick.lower() in nickname.lower() or nickname.lower() in target_nick.lower():
+                target_uid = uid
+                break
+    if not target_uid:
+        all_nicks = [f"'{p.get('nickname', '?')}'" for p in players.values() if p.get('nickname')]
+        nicks_list = ", ".join(all_nicks[:15]) 
+        send_message(user_id, f"❌ Игрок '{target_nick}' не найден.\n\n📋 Доступные ники:\n{nicks_list}", None, vk_session)
+        return True
+    players[user_id]["pending_photo_target"] = target_uid
+    found_nick = players[target_uid].get('nickname', target_nick)
+    send_message(user_id, f"📷 Прикрепите фото для игрока {found_nick}:", None, vk_session)
+    return True
     if text == "/команды" and is_admin(user_id):
         faction_info = "\n👥 ИГРОКИ В ГРУППИРОВКАХ:\n"
         for faction in ["🛡️ Долг", "☦️ Грех", "☢️ Одиночки"]:
