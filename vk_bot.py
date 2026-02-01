@@ -138,19 +138,41 @@ banned_users = {}
 admin_users = []
 shared_warehouse_money = 0
 def init_database():
-    conn = sqlite3.connect(str(DB_PATH))
-    cursor = conn.cursor()
-    cursor.execute('''CREATE TABLE IF NOT EXISTS players (
-        user_id INTEGER PRIMARY KEY,
-        data TEXT NOT NULL
-    )''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS game_state (
-        key TEXT PRIMARY KEY,
-        value TEXT NOT NULL
-    )''')
-    conn.commit()
-    conn.close()
-    logger.info(f"База данных инициализирована: {DB_PATH}")
+    conn = None
+    try:
+        conn = sqlite3.connect(str(DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute('''CREATE TABLE IF NOT EXISTS players (
+            user_id INTEGER PRIMARY KEY,
+            data TEXT NOT NULL
+        )''')
+        cursor.execute('''CREATE TABLE IF NOT EXISTS game_state (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )''')
+        conn.commit()
+        conn.close()
+        logger.info(f"База данных инициализирована: {DB_PATH}")
+    except sqlite3.DatabaseError as e:
+        logger.error(f"Ошибка базы данных: {e}")
+        if conn:
+            conn.close()
+        if os.path.exists(DB_PATH):
+            os.remove(DB_PATH)
+            logger.info("Повреждённая база удалена, создаём новую...")
+            conn = sqlite3.connect(str(DB_PATH))
+            cursor = conn.cursor()
+            cursor.execute('''CREATE TABLE IF NOT EXISTS players (
+                user_id INTEGER PRIMARY KEY,
+                data TEXT NOT NULL
+            )''')
+            cursor.execute('''CREATE TABLE IF NOT EXISTS game_state (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )''')
+            conn.commit()
+            conn.close()
+            logger.info("Новая база данных создана")
 def create_start_keyboard():
     k = VkKeyboard(one_time=False)
     k.add_button("Старт", color=VkKeyboardColor.POSITIVE)
