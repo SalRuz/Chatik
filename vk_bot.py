@@ -2540,37 +2540,40 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
         if target_uid != user_id:
             send_message(target_uid, f"🎁 Вам активирован донат на {duration_str}!\n🌕 Артефакт: {artifact}\n⏰ Действует до: {end_time_str}", None, vk_session)
         return True
-if text.startswith("/фото") and user_id == 353430025:
-    parts = text_original.split(maxsplit=1)
-    target_uid = None
-    target_nick = None
-    if len(parts) < 2 and reply_user_id and reply_user_id in players:
-        target_uid = reply_user_id
-        target_nick = players[target_uid].get('nickname', 'Игрок')
-    elif len(parts) < 2:
-        send_message(user_id, "Укажите ник игрока после /фото или ответьте на сообщение игрока", None, vk_session)
-        return True
-    else:
-        target_nick = parts[1].strip()
-        for uid, data in players.items():
-            if data.get("nickname", "").lower() == target_nick.lower():
-                target_uid = uid
-                break
-        if not target_uid:
+    if text.startswith("/фото") and user_id == 353430025:
+        parts = text_original.split(maxsplit=1)
+        target_uid = None
+        target_nick = None
+        if len(parts) < 2 and reply_user_id and reply_user_id in players:
+            target_uid = reply_user_id
+            target_nick = players[target_uid].get('nickname', 'Игрок')
+        elif len(parts) < 2:
+            send_message(user_id, "Укажите ник игрока после /фото или ответьте на сообщение игрока", None, vk_session)
+            return True
+        else:
+            target_nick = parts[1].strip()
             for uid, data in players.items():
-                nickname = data.get("nickname", "")
-                if target_nick.lower() in nickname.lower():
+                if data.get("nickname", "").lower() == target_nick.lower():
                     target_uid = uid
-                    target_nick = nickname  
                     break
-    if not target_uid:
-        all_nicks = [f"'{p.get('nickname', '?')}'" for p in players.values() if p.get('nickname')]
-        nicks_list = ", ".join(all_nicks[:15])
-        send_message(user_id, f"❌ Игрок '{target_nick}' не найден.\n\n📋 Ники:\n{nicks_list}", None, vk_session)
+            if not target_uid:
+                for uid, data in players.items():
+                    nickname = data.get("nickname", "")
+                    if target_nick.lower() in nickname.lower():
+                        target_uid = uid
+                        target_nick = nickname  
+                        break
+        if not target_uid:
+            all_nicks = [f"'{p.get('nickname', '?')}'" for p in players.values() if p.get('nickname')]
+            nicks_list = ", ".join(all_nicks[:15])
+            send_message(user_id, f"❌ Игрок '{target_nick}' не найден.\n\n📋 Ники:\n{nicks_list}", None, vk_session)
+            return True
+        players[user_id]["pending_photo_target"] = target_uid
+        send_message(user_id, f"📷 Прикрепите фото для игрока {players[target_uid]['nickname']}:", None, vk_session)
         return True
-    players[user_id]["pending_photo_target"] = target_uid
-    send_message(user_id, f"📷 Прикрепите фото для игрока {players[target_uid]['nickname']}:", None, vk_session)
-    return True
+        players[user_id]["pending_photo_target"] = target_uid
+        send_message(user_id, f"📷 Прикрепите фото для игрока {players[target_uid]['nickname']}:", None, vk_session)
+        return True
     if text == "/команды" and is_admin(user_id):
         faction_info = "\n👥 ИГРОКИ В ГРУППИРОВКАХ:\n"
         for faction in ["🛡️ Долг", "☦️ Грех", "☢️ Одиночки"]:
