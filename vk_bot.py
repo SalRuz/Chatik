@@ -2115,8 +2115,6 @@ def notify_game_opened(vk_session):
         if players[uid].get("state") not in [STATE_WAITING_FOR_START, STATE_READING_INSTRUCTIONS, STATE_CHOOSING_FACTION, STATE_ENTERING_NICKNAME]:
             send_message(uid, "🎮 Игра теперь открыта для новых игроков! Все группировки заполнены.", None, vk_session)
 def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
-    if players[user_id].get("state") in [STATE_WAITING_FOR_START, STATE_READING_INSTRUCTIONS, STATE_CHOOSING_FACTION, STATE_ENTERING_NICKNAME]:
-        return False
     text_original = text.strip()
     text = text_original.lower()
     words = text.split()
@@ -3976,8 +3974,11 @@ def handle_message(event, vk_session):
  if user_id in players and players[user_id].get("state") == STATE_WAITING_QUOTE_PHOTO:
   return
  if user_id in players:
-  if handle_global_commands(user_id, text, vk_session):
-   return
+  state = players[user_id].get("state")
+  registration_states = [STATE_WAITING_FOR_START, STATE_READING_INSTRUCTIONS, STATE_CHOOSING_FACTION, STATE_ENTERING_NICKNAME]
+  if state not in registration_states:
+   if handle_global_commands(user_id, text, vk_session):
+    return
  if text.lower() == "/skip_cd" and is_admin(user_id):
   if user_id in players and players[user_id].get("state") == STATE_TRANSITION_WAIT:
    players[user_id]["state"] = STATE_IN_MENU
