@@ -2808,7 +2808,6 @@ if text_lower.startswith("/ник ") and is_admin(user_id):
         if target_uid == 353430025:
             send_message(user_id, "❌ Нельзя забанить разработчика.", None, vk_session)
             return True
-        global banned_users
         if target_uid in banned_users:
             send_message(user_id, "❌ Игрок уже забанен.", None, vk_session)
             return True
@@ -2846,7 +2845,6 @@ if text_lower.startswith("/ник ") and is_admin(user_id):
         if target_uid == user_id:
             send_message(user_id, "❌ Вы уже главный разработчик.", None, vk_session)
             return True
-        global admin_users
         if target_uid in admin_users:
             send_message(user_id, "❌ Игрок уже админ.", None, vk_session)
             return True
@@ -5750,7 +5748,6 @@ if text_lower.startswith("/ник "):
         if target_uid == 353430025:
             send_message(user_id, "❌ Нельзя забанить разработчика.", None, vk_session, peer_id)
             return
-        global banned_users
         if target_uid in banned_users:
             send_message(user_id, "❌ Уже забанен.", None, vk_session, peer_id)
             return
@@ -5802,7 +5799,6 @@ if text_lower.startswith("/ник "):
             if target_uid == user_id:
                 send_message(user_id, "❌ Вы уже разработчик.", None, vk_session, peer_id)
                 return
-            global admin_users
             if target_uid in admin_users:
                 send_message(user_id, "❌ Уже админ.", None, vk_session, peer_id)
                 return
