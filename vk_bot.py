@@ -2738,63 +2738,77 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
         send_message(user_id, f"✅ Игрок {target_nick} телепортирован на {location} {point}.", None, vk_session)
         send_message(target_uid, f"⚡ Вас телепортировали на {location} {point}!", None, vk_session)
         return True
-if text_lower.startswith("/ник ") and is_admin(user_id):
-    content = text_original[5:].strip()
-    if " > " in content:
-        parts = content.split(" > ", 1)
-        old_nick = parts[0].strip()
-        new_nick = parts[1].strip()
-        target_uid = None
-        for uid, data in players.items():
-            if data.get("nickname", "").lower() == old_nick.lower():
-                target_uid = uid
-                break
-        if not target_uid:
+    if text_lower.startswith("/ник ") and is_admin(user_id):
+        content = text_original[5:].strip()
+        
+        # Вариант 1: Использование разделителя ">"
+        if " > " in content:
+            parts = content.split(" > ", 1)
+            old_nick = parts[0].strip()
+            new_nick = parts[1].strip()
+            
+            target_uid = None
             for uid, data in players.items():
-                if old_nick.lower() in data.get("nickname", "").lower():
+                if data.get("nickname", "").lower() == old_nick.lower():
                     target_uid = uid
                     break
-        if not target_uid:
-            all_nicks = [f"'{p.get('nickname', '?')}'" for p in players.values() if p.get('nickname')]
-            nicks_list = ", ".join(all_nicks[:10])
-            send_message(user_id, f"❌ Игрок с ником '{old_nick}' не найден.\n\n📋 Ники: {nicks_list}", None, vk_session)
+            
+            if not target_uid:
+                for uid, data in players.items():
+                    if old_nick.lower() in data.get("nickname", "").lower():
+                        target_uid = uid
+                        break
+            
+            if not target_uid:
+                all_nicks = [f"'{p.get('nickname', '?')}'" for p in players.values() if p.get('nickname')]
+                nicks_list = ", ".join(all_nicks[:10])
+                send_message(user_id, f"❌ Игрок '{old_nick}' не найден.\n\n📋 Ники: {nicks_list}", None, vk_session)
+                return True
+            
+            old_nickname = players[target_uid]["nickname"]
+            players[target_uid]["nickname"] = new_nick
+            save_data()
+            send_message(user_id, f"✅ Ник изменён:\n{old_nickname} → {new_nick}", None, vk_session)
+            send_message(target_uid, f"📝 Ваш ник был изменён администратором на: {new_nick}", None, vk_session)
             return True
+        
+        # Вариант 2: Ответом на сообщение
+        if reply_user_id and reply_user_id in players:
+            new_nick = content
+            if not new_nick:
+                send_message(user_id, "❌ Укажите новый ник.", None, vk_session)
+                return True
+            
+            old_nickname = players[reply_user_id]["nickname"]
+            players[reply_user_id]["nickname"] = new_nick
+            save_data()
+            send_message(user_id, f"✅ Ник изменён:\n{old_nickname} → {new_nick}", None, vk_session)
+            send_message(reply_user_id, f"📝 Ваш ник был изменён администратором на: {new_nick}", None, vk_session)
+            return True
+        
+        # Вариант 3: Простые ники
+        words = content.split()
+        if len(words) < 2:
+            send_message(user_id, "❌ Формат:\n/ник старый > новый\nили ответом: /ник новый", None, vk_session)
+            return True
+        
+        target_uid = None
+        for uid, data in players.items():
+            if data.get("nickname", "").lower() == words[0].lower():
+                target_uid = uid
+                new_nick = " ".join(words[1:])
+                break
+        
+        if not target_uid:
+            send_message(user_id, "❌ Игрок не найден.\n\n💡 Используйте:\n/ник старый > новый", None, vk_session)
+            return True
+        
         old_nickname = players[target_uid]["nickname"]
         players[target_uid]["nickname"] = new_nick
         save_data()
         send_message(user_id, f"✅ Ник изменён:\n{old_nickname} → {new_nick}", None, vk_session)
         send_message(target_uid, f"📝 Ваш ник был изменён администратором на: {new_nick}", None, vk_session)
         return True
-    if reply_user_id and reply_user_id in players:
-        new_nick = content
-        if not new_nick:
-            send_message(user_id, "❌ Укажите новый ник.", None, vk_session)
-            return True
-        old_nickname = players[reply_user_id]["nickname"]
-        players[reply_user_id]["nickname"] = new_nick
-        save_data()
-        send_message(user_id, f"✅ Ник изменён:\n{old_nickname} → {new_nick}", None, vk_session)
-        send_message(reply_user_id, f"📝 Ваш ник был изменён администратором на: {new_nick}", None, vk_session)
-        return True
-    words = content.split()
-    if len(words) < 2:
-        send_message(user_id, "❌ Формат:\n/ник старый_ник > новый_ник\nили ответом на сообщение:\n/ник новый_ник", None, vk_session)
-        return True
-    target_uid = None
-    for uid, data in players.items():
-        if data.get("nickname", "").lower() == words[0].lower():
-            target_uid = uid
-            new_nick = " ".join(words[1:])
-            break
-    if not target_uid:
-        send_message(user_id, "❌ Игрок не найден.\n\n💡 Используйте формат с разделителем:\n/ник ☦️ Грех (2/3) > Ирбис\n\nИли ответьте на сообщение игрока:\n/ник Ирбис", None, vk_session)
-        return True
-    old_nickname = players[target_uid]["nickname"]
-    players[target_uid]["nickname"] = new_nick
-    save_data()
-    send_message(user_id, f"✅ Ник изменён:\n{old_nickname} → {new_nick}", None, vk_session)
-    send_message(target_uid, f"📝 Ваш ник был изменён администратором на: {new_nick}", None, vk_session)
-    return True
     if text.lower() == "информация":
         send_message(user_id, GAME_INFO_TEXT, None, vk_session)
         return True
