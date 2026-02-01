@@ -13,7 +13,7 @@ from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-TOKEN = "vk1.a.BYmyTxdVVClYFc296nKdcYljZmdIjP5NeK2-NSaRBgQyvzpnDZKiuBErgy6-hPWTEh_srYbaP6mYQGUfA3dccknoOSicTxQfxy6F0886zKGxnV_s9aq-urdW9fWYx7dgFJ2d_j1-YBsrwl5U4YlVs16oCo-YSsJrcRpJEcwB8rSbRYGva6vIktxXANc2IK8Gepksi9v9_KJEi7i_qPgyyQ"
+TOKEN = "vk1.a.1xW2SgtNrmY7IT0LXBRgdZ5Ty3Rk-9t9LusZjvEx_ErEfeKkAN2HF9ONYimFKsQ6cnEhCgQamxjTZC-jxMjNYI76FTou6rmb1zbZBlx7ZVw-pCkant8aaWcAuG04dDgohdLlPbS7Jb53A1L0Eoy3wxhc0xiP47dumu8xop07a2-WoZM77xWTkxWTtI5ce5wXDdaNdMJXUefT27BtXk0erg"
 GROUP_ID = 353430025
 DATA_DIR = Path("data")
 DATA_DIR.mkdir(parents=True, exist_ok=True)
