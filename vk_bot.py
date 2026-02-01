@@ -5691,34 +5691,24 @@ def handle_chat_message(event, vk_session):
         send_message(user_id, f"✅ {players[target_uid]['nickname']} → {location} {point}.", None, vk_session, peer_id)
         send_message(target_uid, f"⚡ Вас телепортировали на {location} {point}!", None, vk_session)
         return
-    if text_lower.startswith("/ник "):
-        content = text[5:].strip()
-        words_nik = content.split()
-        if len(words_nik) < 1:
-            send_message(user_id, "❌ Формат: /ник [новый_ник] (ответом) или /ник [старый] [новый]", None, vk_session, peer_id)
-            return
-        if reply_user_id:
-            target_uid = reply_user_id
-            new_nick = content
-        else:
-            if len(words_nik) < 2:
-                send_message(user_id, "❌ Формат: /ник [старый_ник] [новый_ник]", None, vk_session, peer_id)
-                return
-            target_uid = None
-            old_nick_end = 0
-            for i in range(1, len(words_nik)):
-                potential_old_nick = " ".join(words_nik[:i])
-                found_uid = find_player_by_mention_or_nickname(potential_old_nick, vk_session)
-                if found_uid:
-                    target_uid = found_uid
-                    old_nick_end = i
+if text_lower.startswith("/ник "):
+    content = text[5:].strip()
+    if " > " in content:
+        parts = content.split(" > ", 1)
+        old_nick = parts[0].strip()
+        new_nick = parts[1].strip()
+        target_uid = None
+        for uid, data in players.items():
+            if data.get("nickname", "").lower() == old_nick.lower():
+                target_uid = uid
+                break
+        if not target_uid:
+            for uid, data in players.items():
+                if old_nick.lower() in data.get("nickname", "").lower():
+                    target_uid = uid
                     break
-            if not target_uid:
-                send_message(user_id, "❌ Игрок не найден.", None, vk_session, peer_id)
-                return
-            new_nick = " ".join(words_nik[old_nick_end:])
-        if not new_nick:
-            send_message(user_id, "❌ Укажите новый ник.", None, vk_session, peer_id)
+        if not target_uid:
+            send_message(user_id, f"❌ Игрок '{old_nick}' не найден.", None, vk_session, peer_id)
             return
         old_nickname = players[target_uid]["nickname"]
         players[target_uid]["nickname"] = new_nick
@@ -5726,6 +5716,19 @@ def handle_chat_message(event, vk_session):
         send_message(user_id, f"✅ {old_nickname} → {new_nick}", None, vk_session, peer_id)
         send_message(target_uid, f"📝 Ваш ник изменён на: {new_nick}", None, vk_session)
         return
+    if reply_user_id and reply_user_id in players:
+        new_nick = content
+        if not new_nick:
+            send_message(user_id, "❌ Укажите новый ник.", None, vk_session, peer_id)
+            return
+        old_nickname = players[reply_user_id]["nickname"]
+        players[reply_user_id]["nickname"] = new_nick
+        save_data()
+        send_message(user_id, f"✅ {old_nickname} → {new_nick}", None, vk_session, peer_id)
+        send_message(reply_user_id, f"📝 Ваш ник изменён на: {new_nick}", None, vk_session)
+        return
+    send_message(user_id, "❌ Формат:\n/ник старый > новый\nили ответом: /ник новый", None, vk_session, peer_id)
+    return
     if text_lower.startswith("/бан "):
         content = text[5:].strip()
         if not content:
