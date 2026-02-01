@@ -14,7 +14,7 @@ from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 TOKEN = "vk1.a.1xW2SgtNrmY7IT0LXBRgdZ5Ty3Rk-9t9LusZjvEx_ErEfeKkAN2HF9ONYimFKsQ6cnEhCgQamxjTZC-jxMjNYI76FTou6rmb1zbZBlx7ZVw-pCkant8aaWcAuG04dDgohdLlPbS7Jb53A1L0Eoy3wxhc0xiP47dumu8xop07a2-WoZM77xWTkxWTtI5ce5wXDdaNdMJXUefT27BtXk0erg"
-GROUP_ID = 353430025
+GROUP_ID = 221169719
 DATA_DIR = Path("data")
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH = DATA_DIR / "bot.db"
