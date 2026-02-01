@@ -136,7 +136,6 @@ last_restored_categories = []
 faction_shared_squads = {"🛡️ Долг": 0, "☦️ Грех": 0, "☢️ Одиночки": 0}
 banned_users = {}
 admin_users = []
-bot_stopped = False
 shared_warehouse_money = 0
 def init_database():
     conn = sqlite3.connect(str(DB_PATH))
@@ -491,8 +490,6 @@ def load_data():
     last_restored_categories = load_state("last_restored_categories", [])
     faction_shared_squads = load_state("faction_shared_squads", {"🛡️ Долг": 0, "☦️ Грех": 0, "☢️ Одиночки": 0})
     banned_users = load_state("banned_users", {})
-    global bot_stopped
-    bot_stopped = load_state("bot_stopped", False)
     if isinstance(banned_users, list):
         banned_users = {uid: "Причина не указана" for uid in banned_users}
     admin_users = load_state("admin_users", [])
@@ -526,7 +523,6 @@ def save_data():
         save_state("banned_users", banned_users)
         save_state("admin_users", admin_users)
         save_state("max_faction_sizes", MAX_FACTION_SIZES)
-        save_state("bot_stopped", bot_stopped)
         conn.commit()
         conn.close()
         logger.debug("💾 Данные сохранены в SQLite.")
