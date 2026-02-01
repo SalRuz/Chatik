@@ -5809,21 +5809,6 @@ if __name__ == "__main__":
                     msg_text = message.get('text', '').strip()
                     if from_id < 0:
                         continue
-                    if msg_text.lower() == "/стоп" and from_id == 353430025:
-                        bot_stopped = True
-                        save_data()
-                        send_message(from_id, "🛑 Бот остановлен.", None, vk_session, peer_id)
-                        continue
-                    if msg_text.lower() == "/старт" and from_id == 353430025:
-                        bot_stopped = False
-                        save_data()
-                        send_message(from_id, "✅ Бот запущен.", None, vk_session, peer_id)
-                        continue
-                    if bot_stopped and from_id != 353430025:
-                        p_state = players.get(from_id, {}).get("state")
-                        if p_state not in [STATE_WAITING_FOR_START, STATE_READING_INSTRUCTIONS, STATE_CHOOSING_FACTION, STATE_ENTERING_NICKNAME, STATE_WAITING_QUOTE_PHOTO, None]:
-                            send_message(from_id, "⏸ Бот временно остановлен. Попробуйте позже.", None, vk_session, peer_id)
-                            continue
                     attachments = message.get('attachments', [])
                     fwd_messages = message.get('fwd_messages', [])
                     reply_message = message.get('reply_message')
