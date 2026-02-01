@@ -2753,7 +2753,7 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
         send_message(user_id, f"✅ Игрок {target_nick} телепортирован на {location} {point}.", None, vk_session)
         send_message(target_uid, f"⚡ Вас телепортировали на {location} {point}!", None, vk_session)
         return True
-    if text_lower.startswith("/ник ") and user_id == 353430025:
+    if text.startswith("/ник ") and user_id == 353430025:
         content = text_original[5:].strip()
         if " > " in content:
             parts = content.split(" > ", 1)
