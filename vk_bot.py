@@ -127,7 +127,7 @@ ARTIFACT_INFO_TEXT = "💡 Информация об артефактах: \n \n
 EXHAUSTION_LIMITS = {"База": 200,"Точка ресурсов": 150,"Территория": 100,"Логово": 50, "Аномальная зона": 10}
 EMISSION_MAX = 300
 EMISSION_WARNING = 285
-GAME_CHAT_ID = 2000000001  
+GAME_CHAT_ID = 2000000003 
 shared_warehouse = {}
 territory_control = {}
 faction_leaders = {}
@@ -5281,7 +5281,6 @@ def handle_chat_message(event, vk_session):
     user_id = message['from_id']
     text = message.get('text', '').strip()
     peer_id = message['peer_id']
-    logger.info(f"Сообщение из беседы: peer_id = {peer_id}")
     if not text:
         return
     if user_id not in players:
