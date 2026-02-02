@@ -1806,6 +1806,7 @@ def start_anomaly_map(user_id):
     p["artifact_positions"] = artifact_positions
     p["anomaly_positions"] = anomaly_positions
     p["anomaly_path_choosing"] = False
+    p["anomaly_safe_path"] = None
     p["state"] = STATE_ANOMALY_EXPLORE
     save_data()
 def get_detector_alerts(user_id):
@@ -4137,9 +4138,9 @@ def handle_message(event, vk_session):
   p = players[user_id]
   if p.get("anomaly_path_choosing"):
    if text == "🚪 Уйти":
-    players[user_id]["state"] = STATE_IN_MENU
-    players[user_id]["anomaly_path_choosing"] = False
-    players[user_id]["anomaly_safe_path"] = None
+    p["state"] = STATE_IN_MENU
+    p["anomaly_path_choosing"] = False
+    p["anomaly_safe_path"] = None
     save_data()
     send_message(user_id, "Вы отступили от аномальной зоны.", create_main_menu_keyboard(user_id), vk_session)
     return
@@ -4154,34 +4155,16 @@ def handle_message(event, vk_session):
     send_message(user_id, "⚠️ Выберите один из путей или уйдите.", create_anomaly_path_keyboard(), vk_session)
     return
    safe_path = p.get("anomaly_safe_path", 1)
-   if chosen_path == safe_path:
-    start_anomaly_map(user_id)
-    try:
-     img_buffer = generate_anomaly_map_image(user_id)
-     upload_url = vk_session.method("photos.getMessagesUploadServer")["upload_url"]
-     response = vk_session.http.post(upload_url, files={"photo": ("map.png", img_buffer, "image/png")})
-     result = response.json()
-     photo_data = vk_session.method("photos.saveMessagesPhoto", {"photo": result["photo"], "server": result["server"], "hash": result["hash"]})[0]
-     atype = p.get("current_anomaly_type", "грави")
-     msg = f"✅ Вы выбрали безопасный путь!\n\n🌀 Вы вошли в аномальную зону ({atype})\nИспользуйте кнопки для передвижения."
-     alerts = get_detector_alerts(user_id)
-     if alerts:
-      msg += "\n" + alerts
-     vk_session.method("messages.send", {"user_id": user_id, "attachment": f"photo{photo_data['owner_id']}_{photo_data['id']}", "random_id": 0, "message": msg, "keyboard": create_anomaly_movement_keyboard().get_keyboard()})
-    except Exception as e:
-     logger.error(f"Ошибка генерации карты: {e}")
-     send_message(user_id, "✅ Безопасный путь! Вы вошли в аномальную зону.", create_anomaly_movement_keyboard(), vk_session)
-    return
-   else:
+   messages = []
+   if chosen_path != safe_path:
     atype = p.get("current_anomaly_type", "грави")
     min_dmg, max_dmg = ANOMALY_DAMAGE[atype]
     raw_damage = round(random.uniform(min_dmg, max_dmg), 1)
     anomaly_resist = get_total_anomaly_resist(user_id)
     actual_damage = max(0, round(raw_damage - anomaly_resist, 1))
     p["health"] = max(0, p["health"] - actual_damage)
-    messages = []
     if actual_damage > 0:
-     messages.append(f"💥 Вы выбрали опасный путь и попали в аномалию!")
+     messages.append(f"💥 Опасный путь! Вы попали в аномалию!")
      messages.append(f"❤️ Получено {actual_damage} урона (защита: {anomaly_resist})")
      messages.append(f"❤️ Здоровье: {p['health']}/10")
     else:
@@ -4200,27 +4183,36 @@ def handle_message(event, vk_session):
      save_data()
      send_message(user_id, "\n".join(messages), create_main_menu_keyboard(user_id), vk_session)
      return
-    start_anomaly_map(user_id)
-    try:
-     img_buffer = generate_anomaly_map_image(user_id)
-     upload_url = vk_session.method("photos.getMessagesUploadServer")["upload_url"]
-     response = vk_session.http.post(upload_url, files={"photo": ("map.png", img_buffer, "image/png")})
-     result = response.json()
-     photo_data = vk_session.method("photos.saveMessagesPhoto", {"photo": result["photo"], "server": result["server"], "hash": result["hash"]})[0]
-     messages.append(f"\n🌀 Вы всё же прошли в аномальную зону")
-     messages.append("Используйте кнопки для передвижения.")
-     alerts = get_detector_alerts(user_id)
-     if alerts:
-      messages.append(alerts)
-     vk_session.method("messages.send", {"user_id": user_id, "attachment": f"photo{photo_data['owner_id']}_{photo_data['id']}", "random_id": 0, "message": "\n".join(messages), "keyboard": create_anomaly_movement_keyboard().get_keyboard()})
-    except Exception as e:
-     logger.error(f"Ошибка генерации карты: {e}")
-     send_message(user_id, "\n".join(messages) + "\n\nВы вошли в аномальную зону.", create_anomaly_movement_keyboard(), vk_session)
-    return
+    messages.append("")
+   else:
+    messages.append("✅ Вы выбрали безопасный путь!")
+    messages.append("")
+   start_anomaly_map(user_id)
+   save_data()
+   try:
+    img_buffer = generate_anomaly_map_image(user_id)
+    upload_url = vk_session.method("photos.getMessagesUploadServer")["upload_url"]
+    response = vk_session.http.post(upload_url, files={"photo": ("map.png", img_buffer, "image/png")})
+    result = response.json()
+    photo_data = vk_session.method("photos.saveMessagesPhoto", {"photo": result["photo"], "server": result["server"], "hash": result["hash"]})[0]
+    atype = p.get("current_anomaly_type", "грави")
+    messages.append(f"🌀 Вы вошли в аномальную зону ({atype})")
+    messages.append("Используйте кнопки для передвижения.")
+    messages.append("Найдите артефакты и избегайте аномалий!")
+    alerts = get_detector_alerts(user_id)
+    if alerts:
+     messages.append(alerts)
+    vk_session.method("messages.send", {"user_id": user_id, "attachment": f"photo{photo_data['owner_id']}_{photo_data['id']}", "random_id": 0, "message": "\n".join(messages), "keyboard": create_anomaly_movement_keyboard().get_keyboard()})
+   except Exception as e:
+    logger.error(f"Ошибка генерации карты: {e}")
+    messages.append("🌀 Вы вошли в аномальную зону.")
+    messages.append("Используйте кнопки для передвижения.")
+    send_message(user_id, "\n".join(messages), create_anomaly_movement_keyboard(), vk_session)
+   return
   if text == "🚪 Уйти":
-   players[user_id]["state"] = STATE_IN_MENU
-   players[user_id]["artifact_positions"] = []
-   players[user_id]["anomaly_positions"] = []
+   p["state"] = STATE_IN_MENU
+   p["artifact_positions"] = []
+   p["anomaly_positions"] = []
    save_data()
    send_message(user_id, "Вы покинули аномальную зону.", create_main_menu_keyboard(user_id), vk_session)
    return
