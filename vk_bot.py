@@ -2895,6 +2895,21 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
         send_message(user_id, f"✅ Игрок {players[target_uid]['nickname']} снят с админки.", None, vk_session)
         send_message(target_uid, "⚠️ Вы больше не администратор бота.", None, vk_session)
         return True
+    if text == "/инв" or text == "инв":
+        p = players[user_id]
+        backpack = p.get("backpack", {})
+        money = p.get("money", 0)
+        if not backpack or all(v <= 0 for v in backpack.values()):
+            items_str = "Пусто"
+        else:
+            items_list = []
+            for item, count in backpack.items():
+                if count > 0:
+                    items_list.append(f"• {item}: {count}")
+            items_str = "\n".join(items_list)
+        msg = f"🎒 Инвентарь игрока {p.get('nickname', 'Неизвестный')}:\n\n{items_str}\n\n💲 Деньги: {money}р"
+        send_message(user_id, msg, None, vk_session)
+        return True
     return False
 def generate_inventory_image(user_id):
     p = players[user_id]
