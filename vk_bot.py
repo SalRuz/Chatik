@@ -1324,16 +1324,33 @@ def handle_exploration(user_id, vk_session):
     p["stamina"] = max(0, p["stamina"] - 1)
     p["hunger"] = min(10, p["hunger"] + 0.5)
     radiation_gain = get_radiation_gain(ptype)
-    rad_msg = None
+    result_lines = []
     if radiation_gain > 0:
         p["radiation"] = min(10, p["radiation"] + radiation_gain)
-        rad_msg = f"☢️ Вы попали под излучение радиации! (+{radiation_gain})"
-    apply_radiation_damage(user_id)
-    apply_hunger_damage(user_id)
+        result_lines.append(f"☢️ Вы попали под излучение радиации! (+{radiation_gain})")
+    status_messages = []
+    if p["hunger"] >= 10:
+        p["stamina"] = max(0, p["stamina"] - 2)
+        p["health"] = max(0, p["health"] - 0.5)
+        status_messages.append("🍽️ Вы голодаете! (-2⚡, -0.5❤️)")
+    if p["radiation"] >= 10:
+        rad_damage = random.choice([1, 1.5, 2])
+        p["health"] = max(0, p["health"] - rad_damage)
+        status_messages.append(f"☢️ Радиация разъедает вас! (-{rad_damage}❤️)")
     apply_belt_effects_on_exploration(user_id)
     if p["health"] <= 0:
-        if not p.get("death_notified", False):
-            lose_random_items_on_death(user_id, vk_session)
+        death_msg = ""
+        if status_messages:
+            death_msg = "\n".join(status_messages) + "\n\n"
+        death_msg += "💀 Вы погибли от истощения!"
+        lost_items, money_lost = calculate_and_apply_death_losses(user_id, max_items=5, max_money=50)
+        loss_lines = format_death_losses(lost_items, money_lost)
+        if loss_lines:
+            death_msg += "\n" + "\n".join(loss_lines)
+        p["death_notified"] = True
+        p["state"] = STATE_IN_MENU
+        save_data()
+        send_message(user_id, death_msg, create_main_menu_keyboard(user_id), vk_session)
         return
     drops = {}
     if ptype == "Территория":
@@ -1347,9 +1364,8 @@ def handle_exploration(user_id, vk_session):
         drops = roll_drops(DROP_TR, "Точка ресурсов")
     elif ptype == "База":
         drops = roll_drops(DROP_B, "База")
-    result_lines = []
-    if rad_msg:
-        result_lines.append(rad_msg)
+    if status_messages:
+        result_lines.extend(status_messages)
     for item, amount in drops.items():
         if item == "Деньги":
             p["money"] = p.get("money", 0) + amount
@@ -1357,25 +1373,10 @@ def handle_exploration(user_id, vk_session):
         else:
             p["backpack"][item] = p["backpack"].get(item, 0) + amount
             result_lines.append(f"📦 Найдено: {item} x{amount}")
-    if not drops and not rad_msg:
+    if not drops and not result_lines:
         result_lines.append("🔍 Вам не выпало ничего.")
-    rad_damage = apply_radiation_damage(user_id)
-    hunger_damage = apply_hunger_damage(user_id)
-    damage_applied = rad_damage or hunger_damage
-    if damage_applied:
-        reason = get_damage_reason(user_id)
-        total_damage = 0
-        if rad_damage:
-            total_damage += 2
-        if hunger_damage:
-            total_damage += 1
-        result_lines.append(f"💔 Вы получили {total_damage} урон из-за состояния ({reason})!")
-    if p["health"] <= 0 and not p.get("death_notified", False):
-        lose_random_items_on_death(user_id, vk_session)
-        return
     save_data()
     send_message(user_id, "\n".join(result_lines), create_main_menu_keyboard(user_id), vk_session)
-
 def init_territory_exhaustion():
     global territory_exhaustion
     territory_exhaustion = {}
