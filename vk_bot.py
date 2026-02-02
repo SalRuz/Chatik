@@ -1399,17 +1399,36 @@ def trigger_emission(vk_session):
             if ptype in restored:
                 territory_exhaustion[loc][point] = 0
     safe_states = [STATE_IN_CAMP, STATE_IN_BACKPACK, STATE_RESTING, STATE_USING_ITEM, STATE_BELT_MAIN, STATE_BELT_SELECT_SLOT, STATE_BELT_SELECT_ARTIFACT, STATE_BELT_EQUIP, STATE_BELT_UNEQUIP]
+    dead_players = []
     for uid, p in players.items():
         if p.get("state") not in safe_states:
             p["health"] = 0
             p["hunger"] = 10
             p["radiation"] = 10
             p["death_notified"] = True
+            nickname = p.get("nickname", "Неизвестный")
+            faction = p.get("faction", "")
+            location = p.get("location", "?")
+            point = p.get("point", "?")
+            dead_players.append(f"• {nickname} ({faction}) — {location} {point}")
             send_message(uid, "☠️ Вы погибли от выброса! Нужно было укрыться в лагере!", None, vk_session)
     emission_counter = 0
     restored_text = ", ".join(restored)
     for uid in players:
         send_message(uid, f"☢️ Выброс завершён!\n♻️ Восстановлены: {restored_text}", None, vk_session)
+    if dead_players and GAME_CHAT_ID:
+        dead_list = "\n".join(dead_players)
+        chat_msg = f"☢️ ВЫБРОС ЗАВЕРШЁН!\n\n☠️ Погибшие сталкеры:\n{dead_list}\n\n♻️ Восстановлены: {restored_text}"
+        try:
+            vk_session.method("messages.send", {"peer_id": GAME_CHAT_ID, "message": chat_msg, "random_id": 0})
+        except Exception as e:
+            logger.error(f"Ошибка отправки в беседу: {e}")
+    elif GAME_CHAT_ID:
+        chat_msg = f"☢️ ВЫБРОС ЗАВЕРШЁН!\n\n✅ Все сталкеры укрылись!\n\n♻️ Восстановлены: {restored_text}"
+        try:
+            vk_session.method("messages.send", {"peer_id": GAME_CHAT_ID, "message": chat_msg, "random_id": 0})
+        except Exception as e:
+            logger.error(f"Ошибка отправки в беседу: {e}")
     save_data()
 def check_territory_exhaustion(location, point):
     ptype = POINT_TYPES.get(point, "Территория")
