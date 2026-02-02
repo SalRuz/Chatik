@@ -1767,6 +1767,7 @@ def init_anomaly_exploration(user_id):
     point = p["point"]
     atype = ANOMALY_ZONES.get(location, {}).get(point, "грави")
     p["current_anomaly_type"] = atype
+    p["state"] = STATE_ANOMALY_EXPLORE
     if random.randint(1, 100) <= 70:
         safe_path = random.randint(1, 3)
         p["anomaly_safe_path"] = safe_path
@@ -1807,8 +1808,6 @@ def start_anomaly_map(user_id):
     p["anomaly_positions"] = anomaly_positions
     p["anomaly_path_choosing"] = False
     p["anomaly_safe_path"] = None
-    p["state"] = STATE_ANOMALY_EXPLORE
-    save_data()
 def get_detector_alerts(user_id):
     p = players[user_id]
     detector = p.get("detector", None)
@@ -4136,7 +4135,7 @@ def handle_message(event, vk_session):
  state = players[user_id]["state"]
  if state == STATE_ANOMALY_EXPLORE:
   p = players[user_id]
-  if p.get("anomaly_path_choosing"):
+  if p.get("anomaly_path_choosing") == True:
    if text == "🚪 Уйти":
     p["state"] = STATE_IN_MENU
     p["anomaly_path_choosing"] = False
@@ -4172,6 +4171,7 @@ def handle_message(event, vk_session):
     if random.randint(1, 100) <= 25 and p.get("armor"):
      p["armor_durability"] = max(0, p["armor_durability"] - 1)
      messages.append("🔧 Броня повреждена (-1)!")
+    save_data()
     if p["health"] <= 0:
      messages.append("\n💀 Вы погибли в аномалии!")
      lost_items, money_lost = calculate_and_apply_death_losses(user_id, max_items=5, max_money=50)
@@ -4188,31 +4188,31 @@ def handle_message(event, vk_session):
     messages.append("✅ Вы выбрали безопасный путь!")
     messages.append("")
    start_anomaly_map(user_id)
+   p["state"] = STATE_ANOMALY_EXPLORE
    save_data()
+   atype = p.get("current_anomaly_type", "грави")
+   messages.append(f"🌀 Вы вошли в аномальную зону ({atype})")
+   messages.append("Используйте кнопки для передвижения.")
+   messages.append("Найдите артефакты и избегайте аномалий!")
+   alerts = get_detector_alerts(user_id)
+   if alerts:
+    messages.append(alerts)
    try:
     img_buffer = generate_anomaly_map_image(user_id)
     upload_url = vk_session.method("photos.getMessagesUploadServer")["upload_url"]
     response = vk_session.http.post(upload_url, files={"photo": ("map.png", img_buffer, "image/png")})
     result = response.json()
     photo_data = vk_session.method("photos.saveMessagesPhoto", {"photo": result["photo"], "server": result["server"], "hash": result["hash"]})[0]
-    atype = p.get("current_anomaly_type", "грави")
-    messages.append(f"🌀 Вы вошли в аномальную зону ({atype})")
-    messages.append("Используйте кнопки для передвижения.")
-    messages.append("Найдите артефакты и избегайте аномалий!")
-    alerts = get_detector_alerts(user_id)
-    if alerts:
-     messages.append(alerts)
     vk_session.method("messages.send", {"user_id": user_id, "attachment": f"photo{photo_data['owner_id']}_{photo_data['id']}", "random_id": 0, "message": "\n".join(messages), "keyboard": create_anomaly_movement_keyboard().get_keyboard()})
    except Exception as e:
     logger.error(f"Ошибка генерации карты: {e}")
-    messages.append("🌀 Вы вошли в аномальную зону.")
-    messages.append("Используйте кнопки для передвижения.")
     send_message(user_id, "\n".join(messages), create_anomaly_movement_keyboard(), vk_session)
    return
   if text == "🚪 Уйти":
    p["state"] = STATE_IN_MENU
    p["artifact_positions"] = []
    p["anomaly_positions"] = []
+   p["anomaly_path_choosing"] = False
    save_data()
    send_message(user_id, "Вы покинули аномальную зону.", create_main_menu_keyboard(user_id), vk_session)
    return
