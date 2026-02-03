@@ -4021,12 +4021,9 @@ def check_pending_states(vk_session):
                 donation_bonus = 0.5 if has_active_donation(user_id) else 0
                 new_stamina = min(10, initial + elapsed_minutes * (1 + belt_bonus + donation_bonus))
                 if new_stamina > data["stamina"]:
-                    old = data["stamina"]
                     data["stamina"] = new_stamina
-                    if new_stamina == 5 and old < 5:
-                        send_message(user_id, "⚡ Ваша выносливость достигла 5/10.", create_resting_keyboard(), vk_session)
                     updated_any = True
-                elif new_stamina >= 10:
+                if data["stamina"] >= 10:
                     data["stamina"] = 10
                     data["state"] = STATE_IN_CAMP
                     data["rest_start_time"] = None
