@@ -491,6 +491,8 @@ def load_data():
                 p["donation_end_time"] = None
             if "donation_artifact" not in p:
                 p["donation_artifact"] = None
+            if "hidden_anomaly_positions" not in p:
+                p["hidden_anomaly_positions"] = []
             if "backpack" in p:
                 new_backpack = {}
                 for item, count in p["backpack"].items():
@@ -2950,6 +2952,48 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
         msg = f"🎒 Инвентарь игрока {p.get('nickname', 'Неизвестный')}:\n\n{items_str}\n\n💲 Деньги: {money}р"
         send_message(user_id, msg, None, vk_session)
         return True
+    if text == "/сон" or text == "сон":
+        p = players[user_id]
+        if p.get("state") != STATE_RESTING:
+            send_message(user_id, "❌ Вы не отдыхаете.", None, vk_session)
+            return True
+        start_time = p.get("rest_start_time")
+        if not start_time:
+            send_message(user_id, "❌ Ошибка: время начала отдыха не найдено.", None, vk_session)
+            return True
+        current_time = time.time()
+        elapsed = current_time - start_time
+        initial = p.get("initial_stamina", p["stamina"])
+        belt_bonus = apply_belt_effects_on_rest(user_id)
+        donation_bonus = 0.5 if has_active_donation(user_id) else 0
+        total_bonus = 1 + belt_bonus + donation_bonus
+        elapsed_intervals = int(elapsed // 360)
+        current_stamina = min(10, initial + elapsed_intervals * total_bonus)
+        seconds_in_current_interval = elapsed % 360
+        seconds_to_next = int(360 - seconds_in_current_interval)
+        next_mins = seconds_to_next // 60
+        next_secs = seconds_to_next % 60
+        if current_stamina >= 10:
+            total_remaining = 0
+        else:
+            stamina_after_next = min(10, current_stamina + total_bonus)
+            if stamina_after_next >= 10:
+                total_remaining = seconds_to_next
+            else:
+                remaining_after_next = 10 - stamina_after_next
+                intervals_after_next = int(remaining_after_next / total_bonus)
+                if remaining_after_next % total_bonus > 0:
+                    intervals_after_next += 1
+                total_remaining = seconds_to_next + intervals_after_next * 360
+        total_mins = total_remaining // 60
+        total_secs = total_remaining % 60
+        msg = f"😴 Статус отдыха:\n"
+        msg += f"⚡ Текущая выносливость: {current_stamina}/10\n"
+        msg += f"🔋 Восстановление за 6 мин: +{total_bonus}\n"
+        msg += f"⏱️ До следующего восстановления: {next_mins} мин {next_secs} сек\n"
+        msg += f"⏱️ До полного восстановления: {total_mins} мин {total_secs} сек"
+        send_message(user_id, msg, None, vk_session)
+        return True
     return False
 def generate_inventory_image(user_id):
     p = players[user_id]
@@ -4121,6 +4165,7 @@ def handle_message(event, vk_session):
    "med_units": 0,
    "rad_units": 0,
    "donation_end_time": None,
+   "hidden_anomaly_positions": [],
    "donation_artifact": None
   }
   save_data()
