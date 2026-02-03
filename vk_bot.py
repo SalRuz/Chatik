@@ -1786,6 +1786,7 @@ def start_anomaly_map(user_id):
     p["player_pos"] = player_start
     num_artifacts = random.randint(1, 3)
     num_anomalies = random.randint(3, 6)
+    num_hidden_anomalies = random.randint(0, 2)
     occupied = {player_start}
     artifact_positions = []
     for _ in range(num_artifacts):
@@ -1807,8 +1808,19 @@ def start_anomaly_map(user_id):
                 occupied.add(pos)
                 break
             attempts += 1
+    hidden_anomaly_positions = []
+    for _ in range(num_hidden_anomalies):
+        attempts = 0
+        while attempts < 50:
+            pos = (random.randint(0, 5), random.randint(0, 5))
+            if pos not in occupied:
+                hidden_anomaly_positions.append(pos)
+                occupied.add(pos)
+                break
+            attempts += 1
     p["artifact_positions"] = artifact_positions
     p["anomaly_positions"] = anomaly_positions
+    p["hidden_anomaly_positions"] = hidden_anomaly_positions
     p["anomaly_path_choosing"] = False
     p["anomaly_safe_path"] = None
 def get_detector_alerts(user_id):
@@ -1933,6 +1945,7 @@ def handle_anomaly_move(user_id, direction, vk_session):
     messages = []
     artifact_positions = [tuple(pos) for pos in p.get("artifact_positions", [])]
     anomaly_positions = [tuple(pos) for pos in p.get("anomaly_positions", [])]
+    hidden_anomaly_positions = [tuple(pos) for pos in p.get("hidden_anomaly_positions", [])]
     if (px, py) in artifact_positions:
         atype = p.get("current_anomaly_type", "грави")
         found_artifact = get_random_artifact_by_rarity(atype)
@@ -1955,9 +1968,32 @@ def handle_anomaly_move(user_id, direction, vk_session):
             save_data()
             send_message(user_id, "\n".join(messages), create_main_menu_keyboard(user_id), vk_session)
             return
-        if p["detector_charge"] <= 0:
-            messages.append("🔋 Детектор полностью разряжен! Вы покидаете аномальную зону.")
+        min_charge = 2 if detector == "Велес" else (3 if detector == "Сварог" else 1)
+        if p["detector_charge"] < min_charge:
+            messages.append(f"🔋 Заряда детектора недостаточно для продолжения поиска! Вы покидаете аномальную зону.")
             p["state"] = STATE_IN_MENU
+            save_data()
+            send_message(user_id, "\n".join(messages), create_main_menu_keyboard(user_id), vk_session)
+            return
+    if (px, py) in hidden_anomaly_positions:
+        atype = p.get("current_anomaly_type", "грави")
+        min_dmg, max_dmg = ANOMALY_DAMAGE[atype]
+        raw_damage = round(random.uniform(min_dmg, max_dmg), 1)
+        anomaly_resist = get_total_anomaly_resist(user_id)
+        actual_damage = max(0, round(raw_damage - anomaly_resist, 1))
+        p["health"] = max(0, p["health"] - actual_damage)
+        messages.append(f"💥 Вы попали в тайную аномалию! Получено {actual_damage} урона. (❤️ {p['health']}/10)")
+        hidden_anomaly_positions.remove((px, py))
+        p["hidden_anomaly_positions"] = hidden_anomaly_positions
+        if random.randint(1, 100) <= 25 and p.get("armor"):
+            p["armor_durability"] = max(0, p["armor_durability"] - 1)
+            messages.append("🔧 Броня повреждена (-1)!")
+        if p["health"] <= 0:
+            messages.append("💀 Вы погибли в аномалии!")
+            lost_items, money_lost = calculate_and_apply_death_losses(user_id, max_items=5, max_money=50)
+            messages.extend(format_death_losses(lost_items, money_lost))
+            p["state"] = STATE_IN_MENU
+            p["death_notified"] = True
             save_data()
             send_message(user_id, "\n".join(messages), create_main_menu_keyboard(user_id), vk_session)
             return
@@ -4022,6 +4058,9 @@ def check_pending_states(vk_session):
         else:
             save_data()
     for user_id, data in list(players.items()):
+        faction = data.get("faction")
+        if not faction or faction == "None" or faction is None:
+            continue
         if data.get("donation_end_time") and current_time >= data.get("donation_end_time"):
             remove_donation(user_id, vk_session)
         if data.get("health", 10) <= 0:
