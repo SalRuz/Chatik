@@ -1430,13 +1430,20 @@ def trigger_emission(vk_session):
         if p.get("state") not in safe_states:
             if p.get("state") == STATE_TRANSITION_WAIT:
                 p["transition_end_time"] = None
+                if p.get("previous_location") and p.get("previous_point"):
+                    p["location"] = p["previous_location"]
+                    p["point"] = p["previous_point"]
+                p["previous_location"] = None
+                p["previous_point"] = None
                 p["state"] = STATE_IN_MENU
             elif p.get("state") in [STATE_HUNTING, STATE_HUNTING_SHOOTING, STATE_ANOMALY_EXPLORE]:
                 p["state"] = STATE_IN_MENU
                 p["artifact_positions"] = []
                 p["anomaly_positions"] = []
+                p["hidden_anomaly_positions"] = []
                 p["current_mutant"] = None
                 p["mutant_hp"] = None
+                p["anomaly_path_choosing"] = False
             p["health"] = 0
             p["hunger"] = 10
             p["radiation"] = 10
@@ -4083,6 +4090,8 @@ def check_pending_states(vk_session):
         if data.get("state") == STATE_TRANSITION_WAIT:
             end_time = data.get("transition_end_time")
             if end_time and current_time >= end_time:
+                data["previous_location"] = None
+                data["previous_point"] = None
                 if random.randint(1, 100) <= 30:
                     money_found = random.randint(5, 15)
                     data["money"] = data.get("money", 0) + money_found
@@ -4218,6 +4227,8 @@ def handle_message(event, vk_session):
    "rad_units": 0,
    "donation_end_time": None,
    "hidden_anomaly_positions": [],
+   "previous_location": None,
+   "previous_point": None,
    "donation_artifact": None
   }
   save_data()
@@ -4828,6 +4839,8 @@ def handle_message(event, vk_session):
     players[user_id].pop("pending_transition", None)
     save_data()
     return
+   players[user_id]["previous_location"] = players[user_id]["location"]
+   players[user_id]["previous_point"] = players[user_id]["point"]
    players[user_id]["stamina"] -= 3
    players[user_id]["hunger"] += 2
    players[user_id]["location"], players[user_id]["point"] = target_loc, target_point
@@ -4864,6 +4877,8 @@ def handle_message(event, vk_session):
     players[user_id]["state"] = STATE_IN_MENU
     save_data()
     return
+   players[user_id]["previous_location"] = players[user_id]["location"]
+   players[user_id]["previous_point"] = players[user_id]["point"]
    players[user_id]["stamina"] -= 3
    players[user_id]["hunger"] += 2
    players[user_id]["point"] = point
