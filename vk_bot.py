@@ -99,7 +99,7 @@ STATE_WAR_WITHDRAW_SQUAD = "war_withdraw_squad"
 STATE_WAR_ATTACK_CONFIRM = "war_attack_confirm"
 STATE_WAR_SHARED_SQUADS = "war_shared_squads"
 STATE_WAITING_QUOTE_PHOTO = "waiting_quote_photo"
-POINT_COORDINATES = {"Кордон": {"Б1": (125, 863), "Б2": (100, 693), "Б3": (322, 604), "Б4": (256, 92), "Т1": (85, 791), "Т2": (283, 491), "Т3": (482, 615), "Т4": (130, 434), "Т5": (343, 370), "Л1": (174, 748), "Л2": (142, 573), "Л3": (425, 510), "Л4": (420, 373), "Л5": (325, 253), "ТР1": (180, 648), "ТР2": (236, 546), "ТР3": (245, 400), "А1": (62, 611), "А2": (190, 483), "А3": (500, 413)}, "Свалка": {"Б1": (413, 406), "Б2": (661, 192), "Т1": (598, 893), "Т2": (667, 642), "Т3": (227, 451), "Л1": (666, 765), "Л2": (869, 664), "Л3": (879, 390), "Л4": (358, 177), "ТР1": (407, 727), "ТР2": (207, 628), "ТР3": (593, 86), "А1": (471, 578), "А2": (683, 387), "А3": (448, 262)}, "Тёмная долина": {"Б1": (288, 858), "Б2": (626, 516), "Б3": (486, 238), "Т1": (503, 441), "Т2": (363, 180), "Т3": (593, 201), "Л1": (583, 790), "Л2": (509, 650), "Л3": (307, 643), "Л4": (308, 452), "ТР1": (381, 374), "ТР2": (464, 136), "А1": (439, 517), "А2": (627, 410)}, "Поляна": {"Б1": (451, 751), "Б2": (1203, 495), "Б3": (915, 279), "Т1": (205, 761), "Т2": (1051, 401), "Л1": (135, 575), "Л2": (557, 143), "ТР1": (985, 649), "ТР2": (521, 527), "ТР3": (423, 331), "А1": (743, 633), "А2": (373, 499), "А3": (607, 327)}}
+POINT_COORDINATES = {"Кордон": {"Б1": (136, 866), "Б2": (100, 693), "Б3": (322, 604), "Б4": (256, 92), "Т1": (85, 791), "Т2": (283, 491), "Т3": (482, 615), "Т4": (130, 434), "Т5": (343, 370), "Л1": (174, 748), "Л2": (142, 573), "Л3": (425, 510), "Л4": (420, 373), "Л5": (325, 253), "ТР1": (180, 648), "ТР2": (236, 546), "ТР3": (245, 400), "А1": (62, 611), "А2": (190, 483), "А3": (500, 413)}, "Свалка": {"Б1": (413, 406), "Б2": (661, 192), "Т1": (608, 906), "Т2": (667, 642), "Т3": (227, 451), "Л1": (666, 765), "Л2": (869, 664), "Л3": (879, 390), "Л4": (358, 177), "ТР1": (407, 727), "ТР2": (207, 628), "ТР3": (593, 86), "А1": (471, 578), "А2": (683, 387), "А3": (448, 262)}, "Тёмная долина": {"Б1": (288, 858), "Б2": (626, 516), "Б3": (486, 238), "Т1": (503, 441), "Т2": (363, 180), "Т3": (593, 201), "Л1": (583, 790), "Л2": (509, 650), "Л3": (307, 643), "Л4": (308, 452), "ТР1": (381, 374), "ТР2": (464, 136), "А1": (439, 517), "А2": (627, 410)}, "Поляна": {"Б1": (451, 751), "Б2": (1203, 495), "Б3": (915, 279), "Т1": (205, 761), "Т2": (1051, 401), "Л1": (135, 575), "Л2": (557, 143), "ТР1": (985, 649), "ТР2": (521, 527), "ТР3": (423, 331), "А1": (743, 633), "А2": (373, 499), "А3": (607, 327)}}
 SQUAD_COSTS = {1: {"money": 100, "food": 5, "med": 5, "rad": 5}, 3: {"money": 300, "food": 10, "med": 10, "rad": 10}, 5: {"money": 500, "food": 15, "med": 15, "rad": 15}}
 MIN_SQUADS_FOR_POINT = {"База": 5,"Точка ресурсов": 4,"Аномальная зона": 3,"Логово": 2,"Территория": 1}
 CONVERSION_VALUES = {"шоколадный батончик": {"type": "food", "value": 1},"хлеб": {"type": "food", "value": 2},"колбаса": {"type": "food", "value": 3},"консерва": {"type": "food", "value": 4},"бинт": {"type": "med", "value": 1},"аптечка": {"type": "med", "value": 2},"армейская аптечка": {"type": "med", "value": 3},"научная аптечка": {"type": "special", "med": 3, "rad": 1},"сигареты": {"type": "rad", "value": 1},"водка": {"type": "rad", "value": 2},"радиопротектор": {"type": "rad", "value": 3},"антирад": {"type": "rad", "value": 4}}
@@ -1406,6 +1406,15 @@ def increment_emission(vk_session):
     emission_counter += 1
     if emission_counter == EMISSION_WARNING:
         for uid in players:
+            if uid in banned_users:
+                continue
+            p = players[uid]
+            faction = p.get("faction")
+            if not faction or faction == "None" or faction is None:
+                continue
+            state = p.get("state")
+            if state in [STATE_WAITING_FOR_START, STATE_READING_INSTRUCTIONS, STATE_CHOOSING_FACTION, STATE_ENTERING_NICKNAME]:
+                continue
             send_message(uid, "⚠️ ВНИМАНИЕ! Приближается выброс! Укройтесь в лагере!", None, vk_session)
     if emission_counter >= EMISSION_MAX:
         trigger_emission(vk_session)
@@ -1424,11 +1433,16 @@ def trigger_emission(vk_session):
     safe_states = [STATE_IN_CAMP, STATE_IN_BACKPACK, STATE_RESTING, STATE_USING_ITEM, STATE_BELT_MAIN, STATE_BELT_SELECT_SLOT, STATE_BELT_SELECT_ARTIFACT, STATE_BELT_EQUIP, STATE_BELT_UNEQUIP]
     dead_players = []
     for uid, p in players.items():
+        if uid in banned_users:
+            continue
         faction = p.get("faction")
         if not faction or faction == "None" or faction is None:
             continue
-        if p.get("state") not in safe_states:
-            if p.get("state") == STATE_TRANSITION_WAIT:
+        state = p.get("state")
+        if state in [STATE_WAITING_FOR_START, STATE_READING_INSTRUCTIONS, STATE_CHOOSING_FACTION, STATE_ENTERING_NICKNAME]:
+            continue
+        if state not in safe_states:
+            if state == STATE_TRANSITION_WAIT:
                 p["transition_end_time"] = None
                 if p.get("previous_location") and p.get("previous_point"):
                     p["location"] = p["previous_location"]
@@ -1436,7 +1450,7 @@ def trigger_emission(vk_session):
                 p["previous_location"] = None
                 p["previous_point"] = None
                 p["state"] = STATE_IN_MENU
-            elif p.get("state") in [STATE_HUNTING, STATE_HUNTING_SHOOTING, STATE_ANOMALY_EXPLORE]:
+            elif state in [STATE_HUNTING, STATE_HUNTING_SHOOTING, STATE_ANOMALY_EXPLORE]:
                 p["state"] = STATE_IN_MENU
                 p["artifact_positions"] = []
                 p["anomaly_positions"] = []
@@ -1456,9 +1470,15 @@ def trigger_emission(vk_session):
     emission_counter = 0
     restored_text = ", ".join(restored)
     for uid, p in players.items():
+        if uid in banned_users:
+            continue
         faction = p.get("faction")
-        if faction and faction != "None" and faction is not None:
-            send_message(uid, f"☢️ Выброс завершён!\n♻️ Восстановлены: {restored_text}", None, vk_session)
+        if not faction or faction == "None" or faction is None:
+            continue
+        state = p.get("state")
+        if state in [STATE_WAITING_FOR_START, STATE_READING_INSTRUCTIONS, STATE_CHOOSING_FACTION, STATE_ENTERING_NICKNAME]:
+            continue
+        send_message(uid, f"☢️ Выброс завершён!\n♻️ Восстановлены: {restored_text}", None, vk_session)
     if dead_players and GAME_CHAT_ID:
         dead_list = "\n".join(dead_players)
         chat_msg = f"☢️ ВЫБРОС ЗАВЕРШЁН!\n\n☠️ Погибшие сталкеры:\n{dead_list}\n\n♻️ Восстановлены: {restored_text}"
@@ -2228,10 +2248,6 @@ def is_game_open():
         if len(factions[faction]) < MAX_FACTION_SIZES[faction]:
             return False
     return True
-def notify_game_opened(vk_session):
-    for uid in players:
-        if players[uid].get("state") not in [STATE_WAITING_FOR_START, STATE_READING_INSTRUCTIONS, STATE_CHOOSING_FACTION, STATE_ENTERING_NICKNAME]:
-            send_message(uid, "🎮 Игра теперь открыта для новых игроков! Все группировки заполнены.", None, vk_session)
 def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
     text_original = text.strip()
     text = text_original.lower()
@@ -2673,12 +2689,20 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
         p["donation_end_time"] = time.time() + duration
         p["donation_artifact"] = artifact
         p["backpack"][artifact] = p["backpack"].get(artifact, 0) + 1
+        bonus_msg = ""
+        if duration_str == "неделя":
+            p["backpack"]["научная аптечка"] = p["backpack"].get("научная аптечка", 0) + 1
+            p["backpack"]["антирад"] = p["backpack"].get("антирад", 0) + 1
+            p["backpack"]["консерва"] = p["backpack"].get("консерва", 0) + 1
+            p["backpack"]["геркулес"] = p["backpack"].get("геркулес", 0) + 1
+            p["money"] = p.get("money", 0) + 100
+            bonus_msg = "\n\n🎁 Бонусы за неделю:\n• Научная аптечка x1\n• Антирад x1\n• Консерва x1\n• Геркулес x1\n• 💲 100р"
         save_data()
         target_name = players[target_uid]["nickname"]
         end_time_str = time.strftime('%d.%m.%Y %H:%M', time.localtime(p["donation_end_time"]))
-        send_message(user_id, f"✅ Донат активирован игроку {target_name} на {duration_str}!\n🎁 Артефакт: {artifact}\n⏰ Действует до: {end_time_str}", None, vk_session)
+        send_message(user_id, f"✅ Донат активирован игроку {target_name} на {duration_str}!\n🎁 Артефакт: {artifact}\n⏰ Действует до: {end_time_str}{bonus_msg}", None, vk_session)
         if target_uid != user_id:
-            send_message(target_uid, f"🎁 Вам активирован донат на {duration_str}!\n🌕 Артефакт: {artifact}\n⏰ Действует до: {end_time_str}", None, vk_session)
+            send_message(target_uid, f"🎁 Вам активирован донат на {duration_str}!\n🌕 Артефакт: {artifact}\n⏰ Действует до: {end_time_str}{bonus_msg}", None, vk_session)
         return True
     if text.startswith("/фото") and user_id == 353430025:
         parts = text_original.split(maxsplit=1)
@@ -2934,6 +2958,9 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
         if target_uid in banned_users:
             send_message(user_id, "❌ Игрок уже забанен.", None, vk_session)
             return True
+        target_faction = players[target_uid].get("faction")
+        if target_faction and target_uid in factions.get(target_faction, []):
+            factions[target_faction].remove(target_uid)
         banned_users[target_uid] = reason
         save_data()
         send_message(user_id, f"✅ Игрок {players[target_uid]['nickname']} забанен.\n📝 Причина: {reason}", None, vk_session)
@@ -4736,8 +4763,6 @@ def handle_message(event, vk_session):
     save_data()
     chat_link = FACTION_CHAT_LINKS.get(faction_name, "")
     send_message(user_id, f"✅ Вы вступили в группировку {faction_name}!\n\n💬 Ссылка на беседу группировки:\n{chat_link}\n\nТеперь придумай себе кличку в Зоне:", None, vk_session)
-    if was_closed and is_game_open():
-     notify_game_opened(vk_session)
    return
  if state == STATE_ENTERING_NICKNAME:
   nickname = text.strip()
