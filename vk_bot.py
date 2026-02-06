@@ -13,8 +13,8 @@ from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-TOKEN = "vk1.a.1xW2SgtNrmY7IT0LXBRgdZ5Ty3Rk-9t9LusZjvEx_ErEfeKkAN2HF9ONYimFKsQ6cnEhCgQamxjTZC-jxMjNYI76FTou6rmb1zbZBlx7ZVw-pCkant8aaWcAuG04dDgohdLlPbS7Jb53A1L0Eoy3wxhc0xiP47dumu8xop07a2-WoZM77xWTkxWTtI5ce5wXDdaNdMJXUefT27BtXk0erg"
-GROUP_ID = 221169719
+TOKEN = "vk1.a.CU2M1F0_9rxlYYuzK57JMRnY3XO2WmOP_TpXDxHbki0AM_mwV-_eBjjfF8ByZHz--fIHilfQD6oS4_bcqG-cc_GUaDln_X87jt6lG8bVX5MJUribi1nPEbY9pY1X3j-FGoq2Hc-CF2GDvAzalh9VmYtT-iFmyTDepaeJwZXZyYU0eFZg7BwhHnuqmIhQrdiG5LqhWWf9Pn536k1MVKAknQ"
+GROUP_ID = 233350137
 DATA_DIR = Path("data")
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH = DATA_DIR / "bot.db"
@@ -135,7 +135,7 @@ ARTIFACT_INFO_TEXT = "💡 Информация об артефактах: \n \n
 EXHAUSTION_LIMITS = {"База": 200,"Точка ресурсов": 150,"Территория": 100,"Логово": 30, "Аномальная зона": 10}
 EMISSION_MAX = 350
 EMISSION_WARNING = 335
-GAME_CHAT_ID = 2000000003 
+GAME_CHAT_ID = 2000000001 
 shared_warehouse = {}
 territory_control = {}
 faction_leaders = {}
@@ -3241,7 +3241,13 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
    Снять игрока с админки (только разработчик)
 
 🔹 2604
-   Вернуться в главное меню (для всех)"""
+   Вернуться в главное меню (для всех)
+   
+🔹 /последний_рубеж
+   Активировать режим с ботом-противником (только разработчик)
+
+🔹 /зомби
+   Показать статус бота Зомбированных"""
         send_message(user_id, admin_help, None, vk_session)
         return True
     if text.startswith("/лимит ") and is_admin(user_id):
@@ -4478,7 +4484,14 @@ def handle_equipment_buy_confirmation(user_id, text, vk_session):
         save_data()
         send_message(user_id, "Покупка отменена.", create_equipment_category_keyboard(), vk_session)
 def handle_warehouse_action(user_id, text, vk_session):
-    global shared_warehouse, shared_warehouse_money
+    global shared_warehouse, shared_warehouse_money, faction_warehouses, faction_warehouse_money
+    if LAST_STAND_MODE:
+        faction = players[user_id].get("faction")
+        warehouse = faction_warehouses.get(faction, {})
+        warehouse_money = faction_warehouse_money.get(faction, 0)
+    else:
+        warehouse = shared_warehouse
+        warehouse_money = shared_warehouse_money
     parts = text.strip().lower().split()
     if len(parts) < 2:
         send_message(user_id, "❌ Используйте: положить/забрать (предмет) (кол-во)", create_warehouse_keyboard(), vk_session)
@@ -4498,12 +4511,19 @@ def handle_warehouse_action(user_id, text, vk_session):
                 send_message(user_id, "❌ Недостаточно денег.", create_warehouse_keyboard(), vk_session)
                 return
             players[user_id]["money"] -= amount
-            shared_warehouse_money += amount
+            if LAST_STAND_MODE:
+                faction_warehouse_money[faction] = faction_warehouse_money.get(faction, 0) + amount
+            else:
+                shared_warehouse_money += amount
         else:
-            if shared_warehouse_money < amount:
+            current_money = faction_warehouse_money.get(faction, 0) if LAST_STAND_MODE else shared_warehouse_money
+            if current_money < amount:
                 send_message(user_id, "❌ Недостаточно денег на складе.", create_warehouse_keyboard(), vk_session)
                 return
-            shared_warehouse_money -= amount
+            if LAST_STAND_MODE:
+                faction_warehouse_money[faction] -= amount
+            else:
+                shared_warehouse_money -= amount
             players[user_id]["money"] += amount
     else:
         item_name = " ".join(parts[1:-1]) if len(parts) > 3 else parts[1]
@@ -4520,17 +4540,21 @@ def handle_warehouse_action(user_id, text, vk_session):
                 send_message(user_id, f"❌ У вас нет {count} шт. этого предмета.", create_warehouse_keyboard(), vk_session)
                 return
             players[user_id]["backpack"][item_name] -= count
-            shared_warehouse[item_name] = shared_warehouse.get(item_name, 0) + count
+            warehouse[item_name] = warehouse.get(item_name, 0) + count
             if players[user_id]["backpack"][item_name] <= 0:
                 del players[user_id]["backpack"][item_name]
         else:
-            if shared_warehouse.get(item_name, 0) < count:
+            if warehouse.get(item_name, 0) < count:
                 send_message(user_id, f"❌ На складе нет {count} шт. этого предмета.", create_warehouse_keyboard(), vk_session)
                 return
-            shared_warehouse[item_name] -= count
+            warehouse[item_name] -= count
             players[user_id]["backpack"][item_name] = players[user_id]["backpack"].get(item_name, 0) + count
-            if shared_warehouse[item_name] <= 0:
-                del shared_warehouse[item_name]
+            if warehouse[item_name] <= 0:
+                del warehouse[item_name]
+        if LAST_STAND_MODE:
+            faction_warehouses[faction] = warehouse
+        else:
+            shared_warehouse = warehouse
     save_data()
     upload_and_send_warehouse_global(user_id, vk_session)
 def handle_photo_upload(user_id, photo_url, vk_session):
