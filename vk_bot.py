@@ -703,6 +703,32 @@ def get_belt_bonus(user_id, stat):
         if art and art in ARTIFACT_EFFECTS:
             total += ARTIFACT_EFFECTS[art].get(stat, 0)
     return total
+def normalize_stats(user_id):
+    p = players[user_id]
+    p["health"] = round(max(0, min(10, p.get("health", 10))), 1)
+    p["radiation"] = round(max(0, min(10, p.get("radiation", 0))), 1)
+    p["hunger"] = round(max(0, min(10, p.get("hunger", 0))), 1)
+    p["stamina"] = round(max(0, min(10, p.get("stamina", 10))), 1)
+def get_player_position(user_id):
+    p = players[user_id]
+    if p.get("state") != STATE_TRANSITION_WAIT:
+        return p.get("location"), p.get("point")
+    end_time = p.get("transition_end_time")
+    if not end_time:
+        return p.get("location"), p.get("point")
+    current_time = time.time()
+    if current_time >= end_time:
+        return p.get("location"), p.get("point")
+    transition_duration = 900 if has_active_donation(user_id) else 1800
+    start_time = end_time - transition_duration
+    elapsed = current_time - start_time
+    half_time = transition_duration / 2
+    if elapsed < half_time:
+        prev_loc = p.get("previous_location")
+        prev_point = p.get("previous_point")
+        if prev_loc and prev_point:
+            return prev_loc, prev_point
+    return p.get("location"), p.get("point")
 def apply_belt_effects_on_exploration(user_id):
     p = players[user_id]
     health_regen = get_belt_bonus(user_id, "health_regen")
