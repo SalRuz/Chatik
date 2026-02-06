@@ -1574,6 +1574,31 @@ def zombie_convert_items():
             logs.append(f"♻️ Конвертировано: {item_name} x{count}")
     save_data()
     return logs
+def zombie_sell_items():
+    global zombie_bot
+    logs = []
+    total_earned = 0
+    sell_items = ["энергетик нонстоп", "энергетик сталкер", "геркулес", "батарейки"]
+    for item_name in sell_items:
+        count = zombie_bot["backpack"].get(item_name, 0)
+        if count > 0:
+            price = BUY_PRICES.get(item_name, 0) * count
+            zombie_bot["money"] += price
+            total_earned += price
+            logs.append(f"💰 {item_name} x{count} = {price}р")
+            del zombie_bot["backpack"][item_name]
+    for art in ALL_ARTIFACTS:
+        count = zombie_bot["backpack"].get(art, 0)
+        if count > 0:
+            price = ARTIFACT_PRICES.get(art, 15) * count
+            zombie_bot["money"] += price
+            total_earned += price
+            logs.append(f"💰 {art} x{count} = {price}р")
+            del zombie_bot["backpack"][art]
+    if total_earned > 0:
+        logs.insert(0, f"💲 Продано на {total_earned}р:")
+    save_data()
+    return logs
 def zombie_buy_squads():
     global zombie_bot
     logs = []
@@ -1722,6 +1747,13 @@ def zombie_take_action(vk_session):
     else:
         logs.append("   Нет доступных точек")
     logs.append("")
+    logs.append("💰 ПРОДАЖА:")
+    sell_logs = zombie_sell_items()
+    if sell_logs:
+        logs.extend(sell_logs)
+    else:
+        logs.append("   Нечего продавать")
+    logs.append("")
     logs.append("♻️ КОНВЕРТАЦИЯ:")
     conv_logs = zombie_convert_items()
     if conv_logs:
@@ -1772,7 +1804,7 @@ def zombie_take_action(vk_session):
     return logs
 def get_zombie_status():
     controlled = get_zombie_controlled_locations()
-    next_action_time = zombie_bot["last_action_time"] + ZOMBIE_ACTION_INTERVAL
+    next_action_time = zombie_bot.get("last_action_time", 0) + ZOMBIE_ACTION_INTERVAL
     remaining = max(0, next_action_time - time.time())
     mins = int(remaining // 60)
     secs = int(remaining % 60)
@@ -1782,13 +1814,6 @@ def get_zombie_status():
     lines.append(f"🍖 Еда: {zombie_bot['food_units']}")
     lines.append(f"🏥 Мед: {zombie_bot['med_units']}")
     lines.append(f"☢️ Рад: {zombie_bot['rad_units']}")
-    lines.append("")
-    lines.append("📦 ИНВЕНТАРЬ:")
-    if zombie_bot["backpack"]:
-        for item, count in zombie_bot["backpack"].items():
-            lines.append(f"   {item}: {count}")
-    else:
-        lines.append("   Пусто")
     lines.append("")
     lines.append("🗺️ КОНТРОЛИРУЕМЫЕ ТОЧКИ:")
     for loc, point in controlled:
