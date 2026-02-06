@@ -532,6 +532,9 @@ def load_data():
     faction_shared_squads = load_state("faction_shared_squads", {"🛡️ Долг": 0, "☦️ Грех": 0, "☢️ Одиночки": 0})
     global LAST_STAND_MODE, faction_warehouses, faction_warehouse_money, zombie_bot
     LAST_STAND_MODE = load_state("last_stand_mode", False)
+    global EMISSION_MAX, ZOMBIE_ACTION_INTERVAL
+    EMISSION_MAX = load_state("emission_max", 350)
+    ZOMBIE_ACTION_INTERVAL = load_state("zombie_action_interval", 1800)
     faction_warehouses = load_state("faction_warehouses", {"🛡️ Долг": {}, "☦️ Грех": {}, "☢️ Одиночки": {}, ZOMBIE_FACTION: {}})
     faction_warehouse_money = load_state("faction_warehouse_money", {"🛡️ Долг": 0, "☦️ Грех": 0, "☢️ Одиночки": 0, ZOMBIE_FACTION: 0})
     zombie_bot = load_state("zombie_bot", {"money": 0, "squads": 0, "food_units": 0, "med_units": 0, "rad_units": 0, "last_action_time": 0, "next_action": "", "backpack": {}})
@@ -570,6 +573,8 @@ def save_data():
         save_state("faction_warehouses", faction_warehouses)
         save_state("faction_warehouse_money", faction_warehouse_money)
         save_state("zombie_bot", zombie_bot)
+        save_state("emission_max", EMISSION_MAX)
+        save_state("zombie_action_interval", ZOMBIE_ACTION_INTERVAL)
         save_state("banned_users", banned_users)
         save_state("admin_users", admin_users)
         save_state("max_faction_sizes", MAX_FACTION_SIZES)
@@ -3073,12 +3078,26 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
         save_data()
         send_message(user_id, f"✅ Удалено {found_item} x{count} у игрока {players[target_uid]['nickname']}.", None, vk_session)
         return True
-    if text == "/выброс" and is_admin(user_id):
-        global emission_counter
-        emission_counter = 284
-        save_data()
-        send_message(user_id, "✅ Шкала выброса установлена на 284.", None, vk_session)
-        return True
+    if text.startswith("/выброс") and is_admin(user_id):
+        global emission_counter, EMISSION_MAX
+        parts = text.split()
+        if len(parts) >= 2:
+            try:
+                new_max = int(parts[1])
+                if new_max < 50 or new_max > 10000:
+                    send_message(user_id, "❌ Лимит должен быть от 50 до 10000.", None, vk_session)
+                    return True
+                EMISSION_MAX = new_max
+                save_data()
+                send_message(user_id, f"✅ Лимит выброса изменён на {EMISSION_MAX}.", None, vk_session)
+            except:
+                send_message(user_id, "❌ Укажите число. Пример: /выброс 600", None, vk_session)
+            return True
+        else:
+            emission_counter = EMISSION_MAX - 15
+            save_data()
+            send_message(user_id, f"✅ Шкала выброса установлена на {emission_counter}/{EMISSION_MAX}.", None, vk_session)
+            return True
     if text.startswith("/донат ") and user_id == 353430025:
         parts = text_original.split()
         if len(parts) < 3:
@@ -3193,8 +3212,10 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
    Удалить предмет у игрока
    Пример: /дэл хлеб 5 НикИгрока
 
-🔹 /выброс
-   Установить шкалу выброса на 284
+🔹 /выброс [лимит]
+   Без аргумента - запустить выброс
+   С числом - изменить лимит выброса
+   Пример: /выброс 600
 
 🔹 /донат [день/неделя/месяц] [пончик/стейк] [ник]
    Активировать донат игроку
@@ -3247,7 +3268,11 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
    Активировать режим с ботом-противником (только разработчик)
 
 🔹 /зомби
-   Показать статус бота Зомбированных"""
+   Показать статус бота Зомбированных
+
+🔹 /зомби_кд [секунды]
+   Изменить интервал действий зомбированных
+   Пример: /зомби_кд 900 (15 минут)"""
         send_message(user_id, admin_help, None, vk_session)
         return True
     if text.startswith("/лимит ") and is_admin(user_id):
@@ -3538,6 +3563,28 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
             return True
         send_message(user_id, get_zombie_status(), None, vk_session)
         return True
+    if text.startswith("/зомби_кд") and is_admin(user_id):
+        global ZOMBIE_ACTION_INTERVAL
+        parts = text.split()
+        if len(parts) >= 2:
+            try:
+                new_interval = int(parts[1])
+                if new_interval < 60 or new_interval > 7200:
+                    send_message(user_id, "❌ Интервал должен быть от 60 до 7200 секунд.", None, vk_session)
+                    return True
+                ZOMBIE_ACTION_INTERVAL = new_interval
+                save_data()
+                mins = new_interval // 60
+                secs = new_interval % 60
+                send_message(user_id, f"✅ Интервал действий зомбированных: {mins} мин {secs} сек.", None, vk_session)
+            except:
+                send_message(user_id, "❌ Укажите число секунд. Пример: /зомби_кд 900", None, vk_session)
+            return True
+        else:
+            mins = ZOMBIE_ACTION_INTERVAL // 60
+            secs = ZOMBIE_ACTION_INTERVAL % 60
+            send_message(user_id, f"⏱️ Текущий интервал: {mins} мин {secs} сек.\nИспользуйте: /зомби_кд [секунды]", None, vk_session)
+            return True
     return False
 def generate_inventory_image(user_id):
     p = players[user_id]
