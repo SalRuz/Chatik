@@ -104,6 +104,14 @@ SQUAD_COSTS = {1: {"money": 100, "food": 5, "med": 5, "rad": 5}, 3: {"money": 30
 MIN_SQUADS_FOR_POINT = {"База": 5,"Точка ресурсов": 4,"Аномальная зона": 3,"Логово": 2,"Территория": 1}
 CONVERSION_VALUES = {"шоколадный батончик": {"type": "food", "value": 1},"хлеб": {"type": "food", "value": 2},"колбаса": {"type": "food", "value": 3},"консерва": {"type": "food", "value": 4},"бинт": {"type": "med", "value": 1},"аптечка": {"type": "med", "value": 2},"армейская аптечка": {"type": "med", "value": 3},"научная аптечка": {"type": "special", "med": 3, "rad": 1},"сигареты": {"type": "rad", "value": 1},"водка": {"type": "rad", "value": 2},"радиопротектор": {"type": "rad", "value": 3},"антирад": {"type": "rad", "value": 4}}
 FACTION_ICONS = {"🛡️ Долг": "icons/dolg.png","☦️ Грех": "icons/greh.png","☢️ Одиночки": "icons/odinochki.png"}
+ZOMBIE_FACTION = "🧟 Зомбированные"
+FACTION_ICONS[ZOMBIE_FACTION] = "icons/зомбированные.png"
+LAST_STAND_MODE = False
+LAST_STAND_START_POSITIONS = {"🛡️ Долг": ("Кордон", "Б1"), "☢️ Одиночки": ("Кордон", "Б2"), "☦️ Грех": ("Кордон", "Б3"), ZOMBIE_FACTION: [("Свалка", "Б1"), ("Поляна", "Б1"), ("Тёмная долина", "Б3")]}
+faction_warehouses = {"🛡️ Долг": {}, "☦️ Грех": {}, "☢️ Одиночки": {}, ZOMBIE_FACTION: {}}
+faction_warehouse_money = {"🛡️ Долг": 0, "☦️ Грех": 0, "☢️ Одиночки": 0, ZOMBIE_FACTION: 0}
+zombie_bot = {"money": 0, "squads": 0, "food_units": 0, "med_units": 0, "rad_units": 0, "last_action_time": 0, "next_action": "", "backpack": {}}
+ZOMBIE_ACTION_INTERVAL = 1800
 FACTION_START_LOCATIONS = {"🛡️ Долг": ("Кордон", "Б1"),"☦️ Грех": ("Тёмная долина", "Б1"),"☢️ Одиночки": ("Свалка", "Б1")}
 FACTION_CHAT_LINKS = {"🛡️ Долг": "https://vk.me/join//eWcWfZ3Kcr3PZtkGLF91BIxJq4GnZ4aeB8=", "☦️ Грех": "https://vk.me/join/gO2fqOqDnL756hWkhjvMm9P2ypNTz7/r2vw=", "☢️ Одиночки": "https://vk.me/join/ynzBEUOPUmsKVaB0K0BhSFnzGZsNJlrFGNY="}
 POINT_TYPES = {"Б1": "База", "Б2": "База", "Б3": "База", "Б4": "База", "Т1": "Территория", "Т2": "Территория", "Т3": "Территория", "Т4": "Территория", "Т5": "Территория", "ТР1": "Точка ресурсов", "ТР2": "Точка ресурсов", "ТР3": "Точка ресурсов", "А1": "Аномальная зона", "А2": "Аномальная зона", "А3": "Аномальная зона", "Л1": "Логово", "Л2": "Логово", "Л3": "Логово", "Л4": "Логово", "Л5": "Логово"}
@@ -1652,6 +1660,9 @@ def process_attack(attacker_id, location, point, squad_count, with_player, vk_se
     defender_squads = get_territory_squads(location, point)
     ptype = POINT_TYPES.get(point, "Территория")
     min_squads = MIN_SQUADS_FOR_POINT.get(ptype, 1)
+    if defender_faction is not None and defender_faction != attacker_faction:
+        if squad_count < min_squads:
+            return f"❌ Для атаки на {ptype} нужно минимум {min_squads} сквадов."
     def notify_faction_leader(faction, message):
         leader = get_faction_leader(faction)
         if leader and leader in players and leader != attacker_id:
@@ -2286,6 +2297,8 @@ def is_game_open():
             return False
     return True
 def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
+    if user_id in banned_users:
+        return True
     text_original = text.strip()
     text = text_original.lower()
     words = text.split()
@@ -4945,6 +4958,12 @@ def handle_message(event, vk_session):
  if state == STATE_WAITING_FOR_POINT:
   point = text.upper().strip()
   current_loc = players[user_id]["location"]
+  current_point = players[user_id]["point"]
+  if point == current_point:
+   send_message(user_id, "❌ Вы уже находитесь на этой точке.", create_main_menu_keyboard(user_id), vk_session)
+   players[user_id]["state"] = STATE_IN_MENU
+   save_data()
+   return
   if is_valid_point(current_loc, point):
    target_owner = get_territory_owner(current_loc, point)
    player_faction = players[user_id]["faction"]
