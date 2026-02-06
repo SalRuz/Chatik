@@ -737,6 +737,7 @@ def apply_belt_effects_on_exploration(user_id):
         p["health"] = min(10, p["health"] + health_regen)
     if radiation_reduce > 0:
         p["radiation"] = max(0, p["radiation"] - radiation_reduce)
+    normalize_stats(user_id)
 def apply_belt_effects_on_rest(user_id):
     return get_belt_bonus(user_id, "stamina_regen")
 def get_total_stats_with_belt(user_id):
@@ -1107,6 +1108,7 @@ def handle_shooting(user_id, vk_session):
                 p.pop("current_mutant", None)
                 p.pop("mutant_hp", None)
                 p.pop("valid_targets", None)
+                normalize_stats(user_id)
                 save_data()
                 send_message(user_id, "\n".join(messages), create_main_menu_keyboard(user_id), vk_session)
                 return
@@ -1186,6 +1188,7 @@ def handle_exploration(user_id, vk_session):
         if radiation_gain > 0:
             p["radiation"] = min(10, p["radiation"] + radiation_gain)
             status_messages.append(f"☢️ Вы попали под излучение радиации! (+{radiation_gain})")
+        normalize_stats(user_id)
         save_data()
         if p["health"] <= 0:
             death_msg = "\n".join(status_messages) + "\n\n" if status_messages else ""
@@ -1196,6 +1199,7 @@ def handle_exploration(user_id, vk_session):
                 death_msg += "\n" + "\n".join(loss_lines)
             p["death_notified"] = True
             p["state"] = STATE_IN_MENU
+            normalize_stats(user_id)
             save_data()
             send_message(user_id, death_msg, create_main_menu_keyboard(user_id), vk_session)
             return
@@ -1266,6 +1270,7 @@ def handle_exploration(user_id, vk_session):
         if radiation_gain > 0:
             p["radiation"] = min(10, p["radiation"] + radiation_gain)
             status_messages.append(f"☢️ Вы попали под излучение радиации! (+{radiation_gain})")
+        normalize_stats(user_id)
         save_data()
         if p["health"] <= 0:
             death_msg = "\n".join(status_messages) + "\n\n" if status_messages else ""
@@ -1276,6 +1281,7 @@ def handle_exploration(user_id, vk_session):
                 death_msg += "\n" + "\n".join(loss_lines)
             p["death_notified"] = True
             p["state"] = STATE_IN_MENU
+            normalize_stats(user_id)
             save_data()
             send_message(user_id, death_msg, create_main_menu_keyboard(user_id), vk_session)
             return
@@ -1377,6 +1383,7 @@ def handle_exploration(user_id, vk_session):
             death_msg += "\n" + "\n".join(loss_lines)
         p["death_notified"] = True
         p["state"] = STATE_IN_MENU
+        normalize_stats(user_id)
         save_data()
         send_message(user_id, death_msg, create_main_menu_keyboard(user_id), vk_session)
         return
@@ -1557,8 +1564,7 @@ def set_territory_control(location, point, faction, squads):
     save_data()
 def is_player_on_own_territory(user_id):
     p = players[user_id]
-    location = p.get("location")
-    point = p.get("point")
+    location, point = get_player_position(user_id)
     faction = p.get("faction")
     owner = get_territory_owner(location, point)
     return owner == faction
@@ -1571,7 +1577,8 @@ def set_faction_leader(faction, user_id):
 def get_players_on_territory(location, point):
     result = []
     for uid, p in players.items():
-        if p.get("location") == location and p.get("point") == point:
+        loc, pt = get_player_position(uid)
+        if loc == location and pt == point:
             result.append(uid)
     return result
 def get_player_bullet_resist(user_id):
@@ -2060,6 +2067,7 @@ def handle_anomaly_move(user_id, direction, vk_session):
             messages.extend(format_death_losses(lost_items, money_lost))
             p["state"] = STATE_IN_MENU
             p["death_notified"] = True
+            normalize_stats(user_id)
             save_data()
             send_message(user_id, "\n".join(messages), create_main_menu_keyboard(user_id), vk_session)
             return
@@ -2080,6 +2088,7 @@ def handle_anomaly_move(user_id, direction, vk_session):
             messages.extend(format_death_losses(lost_items, money_lost))
             p["state"] = STATE_IN_MENU
             p["death_notified"] = True
+            normalize_stats(user_id)
             save_data()
             send_message(user_id, "\n".join(messages), create_main_menu_keyboard(user_id), vk_session)
             return
@@ -2179,6 +2188,7 @@ def use_item(user_id, item_input, vk_session, from_global_command=False):
         backpack[item_name] -= count
         if backpack[item_name] <= 0:
             del backpack[item_name]
+        normalize_stats(user_id)
         save_data()
         if from_global_command:
             send_message(user_id, "\n".join(messages), None, vk_session)
@@ -2191,16 +2201,16 @@ def use_item(user_id, item_input, vk_session, from_global_command=False):
             p["health"] = min(10, p["health"] + total_value)
             if p["health"] > 0:
                 p.pop("death_notified", None)
-            messages.append(f"❤️ Здоровье восстановлено до {p['health']}/10")
+            messages.append(f"❤️ Здоровье восстановлено до {round(p['health'], 1)}/10")
         elif attr == "radiation":
             p["radiation"] = max(0, p["radiation"] + total_value)
-            messages.append(f"☢️ Радиация снижена до {p['radiation']}/10")
+            messages.append(f"☢️ Радиация снижена до {round(p['radiation'], 1)}/10")
         elif attr == "hunger":
             p["hunger"] = max(0, p["hunger"] + total_value)
-            messages.append(f"🍽️ Голод снижен до {p['hunger']}/10")
+            messages.append(f"🍽️ Голод снижен до {round(p['hunger'], 1)}/10")
         elif attr == "stamina":
             p["stamina"] = min(10, p["stamina"] + total_value)
-            messages.append(f"⚡ Выносливость восстановлена до {p['stamina']}/10")
+            messages.append(f"⚡ Выносливость восстановлена до {round(p['stamina'], 1)}/10")
     if has_active_donation(user_id) and item_name not in DONATION_EXCLUDED_ITEMS:
         donation_art = get_donation_artifact(user_id)
         belt = p.get("belt", [None, None, None])
@@ -2218,6 +2228,7 @@ def use_item(user_id, item_input, vk_session, from_global_command=False):
     backpack[item_name] -= count
     if backpack[item_name] <= 0:
         del backpack[item_name]
+    normalize_stats(user_id)
     save_data()
     if from_global_command:
         send_message(user_id, "\n".join(messages), None, vk_session)
@@ -2379,6 +2390,9 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
         if target_uid == user_id:
             send_message(user_id, "❌ Нельзя перевести деньги самому себе.", None, vk_session)
             return True
+        if target_uid in banned_users:
+            send_message(user_id, "❌ Этот игрок заблокирован.", None, vk_session)
+            return True
         if players[user_id]["money"] < amount:
             send_message(user_id, f"❌ Недостаточно денег. У вас {players[user_id]['money']}р.", None, vk_session)
             return True
@@ -2430,6 +2444,9 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
             return True
         if target_uid == user_id:
             send_message(user_id, "❌ Нельзя отправить предмет самому себе.", None, vk_session)
+            return True
+        if target_uid in banned_users:
+            send_message(user_id, "❌ Этот игрок заблокирован.", None, vk_session)
             return True
         found_item = None
         for item in ITEM_EFFECTS.keys():
@@ -2763,8 +2780,22 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
             current = len(factions.get(faction, []))
             limit = MAX_FACTION_SIZES.get(faction, 5)
             faction_info += f"\n{faction}: {current}/{limit}"
+        donators_list = []
+        for uid, p in players.items():
+            if has_active_donation(uid):
+                end_time = p.get("donation_end_time", 0)
+                end_str = time.strftime('%d.%m.%Y', time.localtime(end_time))
+                donators_list.append(f"• {p.get('nickname', '?')} (до {end_str})")
+        donators_info = "\n\n💎 ДОНАТЕРЫ:\n" + ("\n".join(donators_list) if donators_list else "Нет активных")
+        admins_list = []
+        if 353430025 in players:
+            admins_list.append(f"• {players[353430025].get('nickname', '?')} (разработчик)")
+        for uid in admin_users:
+            if uid in players and uid != 353430025:
+                admins_list.append(f"• {players[uid].get('nickname', '?')}")
+        admins_info = "\n\n👑 АДМИНЫ:\n" + ("\n".join(admins_list) if admins_list else "Нет")
         admin_help = f"""📋 АДМИН КОМАНДЫ:
-{faction_info}
+{faction_info}{donators_info}{admins_info}
 
 🔹 /бог
    Получить 1000р и восстановить все характеристики
@@ -5569,6 +5600,8 @@ def handle_message(event, vk_session):
 def handle_chat_message(event, vk_session):
     message = event.obj.message
     user_id = message['from_id']
+    if user_id in banned_users:
+        return
     text = message.get('text', '').strip()
     peer_id = message['peer_id']
     if not text:
@@ -5612,6 +5645,9 @@ def handle_chat_message(event, vk_session):
             return
         if target_uid == user_id:
             send_message(user_id, "❌ Нельзя перевести себе.", None, vk_session, peer_id)
+            return
+        if target_uid in banned_users:
+            send_message(user_id, "❌ Этот игрок заблокирован.", None, vk_session, peer_id)
             return
         if players[user_id]["money"] < amount:
             send_message(user_id, f"❌ Недостаточно денег. У вас {players[user_id]['money']}р.", None, vk_session, peer_id)
