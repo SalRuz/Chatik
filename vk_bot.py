@@ -847,17 +847,24 @@ def format_backpack_info(user_id):
                     sorted_items = sorted(active_items.items(), key=lambda x: x[1], reverse=True)
                 items_str = "\n".join([f"{item}: {count}" for item, count in sorted_items])
     return "🎒 Ваши вещи:\n" + items_str + "\n————————————\n" + f"💲 Ваши деньги: {money}р"
-def format_warehouse_info():
-    if not shared_warehouse:
+def format_warehouse_info(user_id=None):
+    if LAST_STAND_MODE and user_id:
+        faction = players[user_id].get("faction")
+        warehouse = faction_warehouses.get(faction, {})
+        money = faction_warehouse_money.get(faction, 0)
+    else:
+        warehouse = shared_warehouse
+        money = shared_warehouse_money
+    if not warehouse:
         items_str = "Пока пусто... 📦"
     else:
-        active_items = {k: v for k, v in shared_warehouse.items() if v > 0}
+        active_items = {k: v for k, v in warehouse.items() if v > 0}
         if not active_items:
             items_str = "Пусто"
         else:
             items_list = [f"{item}: {count}" for item, count in active_items.items()]
             items_str = "\n".join(items_list)
-    return "🧰 Склад:\n" + items_str + "\n————————————\n" + f"💲 Деньги на складе: {shared_warehouse_money}р"
+    return "🧰 Склад:\n" + items_str + "\n————————————\n" + f"💲 Деньги на складе: {money}р"
 def can_transition_from(loc, point):
     return (loc, point) in TRANSITION_ROUTES
 def get_available_transitions(loc, point):
