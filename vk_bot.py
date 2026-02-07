@@ -2284,6 +2284,8 @@ def process_attack(attacker_id, location, point, squad_count, with_player, vk_se
     attacker = players[attacker_id]
     attacker_faction = attacker["faction"]
     defender_faction = get_territory_owner(location, point)
+    if defender_faction == ZOMBIE_FACTION and LAST_STAND_MODE:
+        zombie_territory_attacked(location, point, attacker_faction, vk_session)
     defender_squads = get_territory_squads(location, point)
     ptype = POINT_TYPES.get(point, "Территория")
     min_squads = MIN_SQUADS_FOR_POINT.get(ptype, 1)
