@@ -703,7 +703,9 @@ def send_location_image(user_id, location, point, message, keyboard, vk_session)
         logger.error(f"Ошибка отправки изображения локации: {e}")
         send_message(user_id, message, keyboard, vk_session)
 def reset_all_data():
-    global players, factions, shared_warehouse, shared_warehouse_money, territory_control, faction_leaders, territory_exhaustion, emission_counter, last_restored_categories, faction_shared_squads
+    global players, factions, shared_warehouse, shared_warehouse_money, territory_control
+    global faction_leaders, territory_exhaustion, emission_counter, last_restored_categories
+    global faction_shared_squads, LAST_STAND_MODE, faction_warehouses, faction_warehouse_money, zombie_bot
     players = {}
     factions = {"🛡️ Долг": [], "☦️ Грех": [], "☢️ Одиночки": []}
     shared_warehouse = {}
@@ -714,6 +716,10 @@ def reset_all_data():
     emission_counter = 0
     last_restored_categories = []
     faction_shared_squads = {"🛡️ Долг": 0, "☦️ Грех": 0, "☢️ Одиночки": 0}
+    LAST_STAND_MODE = False
+    faction_warehouses = {"🛡️ Долг": {}, "☦️ Грех": {}, "☢️ Одиночки": {}, ZOMBIE_FACTION: {}}
+    faction_warehouse_money = {"🛡️ Долг": 0, "☦️ Грех": 0, "☢️ Одиночки": 0, ZOMBIE_FACTION: 0}
+    zombie_bot = {"money": 0, "squads": 0, "food_units": 0, "med_units": 0, "rad_units": 0, "last_action_time": 0, "next_action": "", "backpack": {}, "mode": "normal", "priority_target": None, "agro_points": [], "last_attacked_by": None}
     init_territory_control()
     init_territory_exhaustion()
     save_data()
