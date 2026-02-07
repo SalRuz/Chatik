@@ -2106,6 +2106,8 @@ def trigger_emission(vk_session):
         faction = p.get("faction")
         if not faction or faction == "None" or faction is None:
             continue
+        if faction == ZOMBIE_FACTION:
+            continue
         state = p.get("state")
         if state in [STATE_WAITING_FOR_START, STATE_READING_INSTRUCTIONS, STATE_CHOOSING_FACTION, STATE_ENTERING_NICKNAME]:
             continue
@@ -2142,6 +2144,8 @@ def trigger_emission(vk_session):
             continue
         faction = p.get("faction")
         if not faction or faction == "None" or faction is None:
+            continue
+        if faction == ZOMBIE_FACTION:
             continue
         state = p.get("state")
         if state in [STATE_WAITING_FOR_START, STATE_READING_INSTRUCTIONS, STATE_CHOOSING_FACTION, STATE_ENTERING_NICKNAME]:
