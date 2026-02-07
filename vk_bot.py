@@ -111,8 +111,10 @@ LAST_STAND_MODE = False
 LAST_STAND_START_POSITIONS = {"🛡️ Долг": ("Кордон", "Б1"), "☢️ Одиночки": ("Кордон", "Б2"), "☦️ Грех": ("Кордон", "Б3"), ZOMBIE_FACTION: [("Свалка", "Б1"), ("Поляна", "Б1"), ("Тёмная долина", "Б3")]}
 faction_warehouses = {"🛡️ Долг": {}, "☦️ Грех": {}, "☢️ Одиночки": {}, ZOMBIE_FACTION: {}}
 faction_warehouse_money = {"🛡️ Долг": 0, "☦️ Грех": 0, "☢️ Одиночки": 0, ZOMBIE_FACTION: 0}
-zombie_bot = {"money": 0, "squads": 0, "food_units": 0, "med_units": 0, "rad_units": 0, "last_action_time": 0, "next_action": "", "backpack": {}}
+zombie_bot = {"money": 0, "squads": 0, "food_units": 0, "med_units": 0, "rad_units": 0, "last_action_time": 0, "next_action": "", "backpack": {}, "mode": "normal", "priority_target": None, "agro_points": [], "last_attacked_by": None}
 ZOMBIE_ACTION_INTERVAL = 1800
+POINT_STRENGTH = {"База": 5, "Точка ресурсов": 4, "Аномальная зона": 3, "Логово": 2, "Территория": 1}
+ZOMBIE_PHASES = {15: {"name": "Стартовые силы", "territories": 1, "loot_times": 5}, 30: {"name": "Низкий старт", "territories": 1, "loot_times": 10}, 45: {"name": "Начальная фаза апокалипсиса", "territories": 2, "loot_times": 10}, 60: {"name": "Неудержимый марш смерти", "territories": 3, "loot_times": 10}, 75: {"name": "Хаос воплоти", "territories": 4, "loot_times": 10}, 100: {"name": "Армагеддон", "territories": 5, "loot_times": 10}}
 FACTION_START_LOCATIONS = {"🛡️ Долг": ("Кордон", "Б1"),"☦️ Грех": ("Тёмная долина", "Б1"),"☢️ Одиночки": ("Свалка", "Б1")}
 FACTION_CHAT_LINKS = {"🛡️ Долг": "https://vk.me/join//eWcWfZ3Kcr3PZtkGLF91BIxJq4GnZ4aeB8=", "☦️ Грех": "https://vk.me/join/gO2fqOqDnL756hWkhjvMm9P2ypNTz7/r2vw=", "☢️ Одиночки": "https://vk.me/join/ynzBEUOPUmsKVaB0K0BhSFnzGZsNJlrFGNY="}
 POINT_TYPES = {"Б1": "База", "Б2": "База", "Б3": "База", "Б4": "База", "Т1": "Территория", "Т2": "Территория", "Т3": "Территория", "Т4": "Территория", "Т5": "Территория", "ТР1": "Точка ресурсов", "ТР2": "Точка ресурсов", "ТР3": "Точка ресурсов", "А1": "Аномальная зона", "А2": "Аномальная зона", "А3": "Аномальная зона", "Л1": "Логово", "Л2": "Логово", "Л3": "Логово", "Л4": "Логово", "Л5": "Логово"}
@@ -474,6 +476,19 @@ def create_anomaly_path_keyboard():
     k.add_button("🌀 Путь 3", color=VkKeyboardColor.PRIMARY)
     k.add_line()
     k.add_button("🚪 Уйти", color=VkKeyboardColor.NEGATIVE)
+    return k
+def create_zombie_control_keyboard():
+    k = VkKeyboard(one_time=False)
+    k.add_button("⚔️ Агрессивный захват", color=VkKeyboardColor.NEGATIVE)
+    k.add_line()
+    k.add_button("⚖️ Обычный режим", color=VkKeyboardColor.PRIMARY)
+    k.add_line()
+    k.add_button("📦 Накопление ресурсов", color=VkKeyboardColor.POSITIVE)
+    k.add_line()
+    k.add_button("🎯 Установить приоритет", color=VkKeyboardColor.SECONDARY)
+    k.add_button("❌ Сбросить приоритет", color=VkKeyboardColor.SECONDARY)
+    k.add_line()
+    k.add_button("🔚 Назад", color=VkKeyboardColor.SECONDARY)
     return k
 def load_data():
     global players, factions, shared_warehouse, shared_warehouse_money, territory_control, faction_leaders, territory_exhaustion, emission_counter, last_restored_categories, faction_shared_squads, banned_users, admin_users
@@ -1512,7 +1527,10 @@ def get_zombie_available_targets():
         for point in LOCATIONS[loc]:
             owner = get_territory_owner(loc, point)
             if owner != ZOMBIE_FACTION:
-                targets.append((loc, point, owner))
+                enemy_squads = get_territory_squads(loc, point)
+                ptype = POINT_TYPES.get(point, "Территория")
+                targets.append({"loc": loc, "point": point, "owner": owner, "squads": enemy_squads, "type": ptype})
+    random.shuffle(targets)
     return targets
 def zombie_loot_territory(loc, point, vk_session):
     global zombie_bot, emission_counter
@@ -1585,8 +1603,8 @@ def zombie_sell_items():
     global zombie_bot
     logs = []
     total_earned = 0
-    sell_items = ["энергетик нонстоп", "энергетик сталкер", "геркулес", "батарейки"]
-    for item_name in sell_items:
+    always_sell = ["энергетик нонстоп", "энергетик сталкер", "геркулес", "батарейки"]
+    for item_name in always_sell:
         count = zombie_bot["backpack"].get(item_name, 0)
         if count > 0:
             price = BUY_PRICES.get(item_name, 0) * count
@@ -1602,6 +1620,34 @@ def zombie_sell_items():
             total_earned += price
             logs.append(f"💰 {art} x{count} = {price}р")
             del zombie_bot["backpack"][art]
+    max_units = 50
+    if zombie_bot["food_units"] > max_units:
+        for item_name in ["консерва", "колбаса", "хлеб", "шоколадный батончик"]:
+            count = zombie_bot["backpack"].get(item_name, 0)
+            if count > 0:
+                price = BUY_PRICES.get(item_name, 0) * count
+                zombie_bot["money"] += price
+                total_earned += price
+                logs.append(f"💰 {item_name} x{count} = {price}р (излишки)")
+                del zombie_bot["backpack"][item_name]
+    if zombie_bot["med_units"] > max_units:
+        for item_name in ["научная аптечка", "армейская аптечка", "аптечка", "бинт"]:
+            count = zombie_bot["backpack"].get(item_name, 0)
+            if count > 0:
+                price = BUY_PRICES.get(item_name, 0) * count
+                zombie_bot["money"] += price
+                total_earned += price
+                logs.append(f"💰 {item_name} x{count} = {price}р (излишки)")
+                del zombie_bot["backpack"][item_name]
+    if zombie_bot["rad_units"] > max_units:
+        for item_name in ["антирад", "радиопротектор", "водка", "сигареты"]:
+            count = zombie_bot["backpack"].get(item_name, 0)
+            if count > 0:
+                price = BUY_PRICES.get(item_name, 0) * count
+                zombie_bot["money"] += price
+                total_earned += price
+                logs.append(f"💰 {item_name} x{count} = {price}р (излишки)")
+                del zombie_bot["backpack"][item_name]
     if total_earned > 0:
         logs.insert(0, f"💲 Продано на {total_earned}р:")
     save_data()
@@ -1642,34 +1688,64 @@ def zombie_buy_squads():
     save_data()
     return logs
 def zombie_choose_target():
+    global zombie_bot
+    if zombie_bot.get("priority_target"):
+        loc, point = zombie_bot["priority_target"]
+        if get_territory_owner(loc, point) != ZOMBIE_FACTION:
+            controlled = get_zombie_controlled_locations()
+            can_reach = False
+            for cloc, cpoint in controlled:
+                if cloc == loc:
+                    can_reach = True
+                    break
+                if (cloc, cpoint) in TRANSITION_ROUTES:
+                    for dest_loc, dest_point in TRANSITION_ROUTES[(cloc, cpoint)]:
+                        if dest_loc == loc:
+                            can_reach = True
+                            break
+            if can_reach:
+                enemy_squads = get_territory_squads(loc, point)
+                ptype = POINT_TYPES.get(point, "Территория")
+                min_needed = MIN_SQUADS_FOR_POINT.get(ptype, 1)
+                squads_to_send = max(min_needed, enemy_squads + random.randint(1, 3))
+                if zombie_bot["squads"] >= squads_to_send:
+                    return loc, point, squads_to_send
+            else:
+                for cloc, cpoint in controlled:
+                    if (cloc, cpoint) in TRANSITION_ROUTES:
+                        for dest_loc, dest_point in TRANSITION_ROUTES[(cloc, cpoint)]:
+                            if dest_loc == loc:
+                                trans_owner = get_territory_owner(cloc, cpoint)
+                                if trans_owner == ZOMBIE_FACTION:
+                                    continue
+                                enemy_squads = get_territory_squads(dest_loc, dest_point)
+                                ptype = POINT_TYPES.get(dest_point, "Территория")
+                                min_needed = MIN_SQUADS_FOR_POINT.get(ptype, 1)
+                                squads_to_send = max(min_needed, enemy_squads + 2)
+                                if zombie_bot["squads"] >= squads_to_send:
+                                    return dest_loc, dest_point, squads_to_send
+    if zombie_bot.get("agro_points"):
+        for agro_loc, agro_point in zombie_bot["agro_points"]:
+            if get_territory_owner(agro_loc, agro_point) != ZOMBIE_FACTION:
+                enemy_squads = get_territory_squads(agro_loc, agro_point)
+                ptype = POINT_TYPES.get(agro_point, "Территория")
+                min_needed = MIN_SQUADS_FOR_POINT.get(ptype, 1)
+                squads_to_send = max(min_needed, enemy_squads + random.randint(2, 5))
+                if zombie_bot["squads"] >= squads_to_send:
+                    return agro_loc, agro_point, squads_to_send
     targets = get_zombie_available_targets()
     if not targets:
         return None, None, 0
-    priority_targets = []
-    for loc, point, owner in targets:
-        ptype = POINT_TYPES.get(point, "Территория")
-        enemy_squads = get_territory_squads(loc, point)
-        min_needed = MIN_SQUADS_FOR_POINT.get(ptype, 1)
-        if owner is None:
-            priority = 100 - min_needed
-        else:
-            priority = 50 - enemy_squads
-        if ptype == "База":
-            priority += 20
-        elif ptype == "Точка ресурсов":
-            priority += 15
-        elif point in ["Т3", "Л3", "Л4"]:
-            if (loc, point) in TRANSITION_ROUTES:
-                priority += 25
-        priority_targets.append((priority, loc, point, owner, enemy_squads))
-    priority_targets.sort(key=lambda x: x[0], reverse=True)
-    for priority, loc, point, owner, enemy_squads in priority_targets:
-        ptype = POINT_TYPES.get(point, "Территория")
+    for target in targets:
+        loc, point = target["loc"], target["point"]
+        owner = target["owner"]
+        enemy_squads = target["squads"]
+        ptype = target["type"]
         min_needed = MIN_SQUADS_FOR_POINT.get(ptype, 1)
         if owner is None:
             squads_to_send = min_needed
         else:
-            squads_to_send = max(min_needed, enemy_squads + 2)
+            squads_to_send = max(min_needed, enemy_squads + random.randint(1, 4))
         if zombie_bot["squads"] >= squads_to_send:
             return loc, point, squads_to_send
     return None, None, 0
@@ -1688,47 +1764,104 @@ def zombie_attack(loc, point, squad_count, vk_session):
             vk_session.method("messages.send", {"peer_id": GAME_CHAT_ID, "message": f"🧟 Зомбированные захватили {loc} {point}!", "random_id": 0})
         except:
             pass
+        save_data()
+        return logs
+    if owner and owner != ZOMBIE_FACTION:
+        leader = get_faction_leader(owner)
+        if leader and leader in players:
+            send_message(leader, f"⚠️ Зомбированные атакуют {loc} {point} силами {squad_count} сквадов!", None, vk_session)
+    defenders = get_players_on_territory(loc, point)
+    defender_players = [uid for uid in defenders if uid in players and players[uid].get("faction") == owner and players[uid].get("health", 0) > 0]
+    if defender_players:
+        damage_per_player = squad_count / max(1, len(defender_players))
+        for def_id in defender_players:
+            p = players[def_id]
+            bullet_resist = get_player_bullet_resist(def_id)
+            actual_damage = max(0.5, damage_per_player - bullet_resist)
+            p["health"] = max(0, p["health"] - actual_damage)
+            send_message(def_id, f"⚔️ Зомбированные атакуют {loc} {point}!\n💔 Получено {actual_damage} урона от атаки.", None, vk_session)
+            if random.randint(1, 100) <= 30:
+                if p.get("armor") and p.get("armor_durability", 0) > 0:
+                    p["armor_durability"] = max(0, p["armor_durability"] - 1)
+                    send_message(def_id, "🔧 Броня повреждена (-1)!", None, vk_session)
+            if p["health"] <= 0:
+                p["death_notified"] = True
+                lost_items, money_lost = calculate_and_apply_death_losses(def_id, max_items=10, max_money=100)
+                for item, count in lost_items.items():
+                    zombie_bot["backpack"][item] = zombie_bot["backpack"].get(item, 0) + count
+                zombie_bot["money"] += money_lost
+                msg_lines = ["💀 Вы погибли от атаки зомбированных!"]
+                msg_lines.extend(format_death_losses(lost_items, money_lost))
+                new_loc, new_point = find_nearest_faction_territory(def_id)
+                if new_loc and new_point:
+                    p["location"] = new_loc
+                    p["point"] = new_point
+                    msg_lines.append(f"\n📍 Вы перемещены на {new_loc} {new_point}")
+                send_message(def_id, "\n".join(msg_lines), create_main_menu_keyboard(def_id), vk_session)
+                logs.append(f"💀 Убит игрок: {p.get('nickname', '?')}")
+    remaining_after_battle = squad_count - enemy_squads
+    if remaining_after_battle >= min_needed:
+        set_territory_control(loc, point, ZOMBIE_FACTION, remaining_after_battle)
+        zombie_bot["squads"] -= squad_count
+        logs.append(f"⚔️ Атака: {loc} {point} vs {owner}")
+        logs.append(f"✅ Захвачено! Потери: {enemy_squads}, размещено: {remaining_after_battle}")
+        try:
+            vk_session.method("messages.send", {"peer_id": GAME_CHAT_ID, "message": f"🧟 Зомбированные захватили {loc} {point} у {owner}!", "random_id": 0})
+        except:
+            pass
+        if leader and leader in players:
+            send_message(leader, f"💀 Территория {loc} {point} захвачена зомбированными!", None, vk_session)
+        for def_id in defender_players:
+            if players[def_id].get("health", 0) > 0:
+                new_loc, new_point = find_nearest_faction_territory(def_id)
+                if new_loc and new_point:
+                    players[def_id]["location"] = new_loc
+                    players[def_id]["point"] = new_point
+                    send_message(def_id, f"📍 Территория потеряна. Вы перемещены на {new_loc} {new_point}", create_main_menu_keyboard(def_id), vk_session)
+    elif remaining_after_battle > 0:
+        set_territory_control(loc, point, None, 0)
+        zombie_bot["squads"] -= squad_count
+        logs.append(f"⚔️ Атака: {loc} {point} vs {owner}")
+        logs.append(f"⚠️ Точка освобождена, но недостаточно для удержания")
     else:
-        remaining_after_battle = squad_count - enemy_squads
-        if remaining_after_battle >= min_needed:
-            set_territory_control(loc, point, ZOMBIE_FACTION, remaining_after_battle)
-            zombie_bot["squads"] -= squad_count
-            logs.append(f"⚔️ Атака: {loc} {point} vs {owner}")
-            logs.append(f"✅ Захвачено! Потери: {enemy_squads}, размещено: {remaining_after_battle}")
-            try:
-                vk_session.method("messages.send", {"peer_id": GAME_CHAT_ID, "message": f"🧟 Зомбированные захватили {loc} {point} у {owner}!", "random_id": 0})
-            except:
-                pass
-            leader = get_faction_leader(owner)
-            if leader and leader in players:
-                send_message(leader, f"⚠️ Зомбированные захватили вашу территорию {loc} {point}!", None, vk_session)
-        elif remaining_after_battle > 0:
-            set_territory_control(loc, point, None, 0)
-            zombie_bot["squads"] -= squad_count
-            logs.append(f"⚔️ Атака: {loc} {point} vs {owner}")
-            logs.append(f"⚠️ Точка освобождена, но недостаточно для удержания")
-        else:
-            territory_control[loc][point]["squads"] = max(0, enemy_squads - squad_count)
-            zombie_bot["squads"] -= squad_count
-            logs.append(f"⚔️ Атака: {loc} {point} vs {owner}")
-            logs.append(f"❌ Атака отбита. Потеряно: {squad_count}")
+        territory_control[loc][point]["squads"] = max(0, enemy_squads - squad_count)
+        zombie_bot["squads"] -= squad_count
+        logs.append(f"⚔️ Атака: {loc} {point} vs {owner}")
+        logs.append(f"❌ Атака отбита. Потеряно: {squad_count}")
     save_data()
     return logs
+def zombie_territory_attacked(location, point, attacker_faction, vk_session):
+    global zombie_bot
+    if (location, point) not in zombie_bot.get("agro_points", []):
+        zombie_bot["agro_points"] = zombie_bot.get("agro_points", [])
+        zombie_bot["agro_points"].append((location, point))
+    zombie_bot["last_attacked_by"] = attacker_faction
+    save_data()
 def zombie_reinforce():
     global zombie_bot, territory_control
     logs = []
     controlled = get_zombie_controlled_locations()
+    if zombie_bot.get("agro_points"):
+        for agro_loc, agro_point in list(zombie_bot["agro_points"]):
+            if get_territory_owner(agro_loc, agro_point) == ZOMBIE_FACTION:
+                current_squads = get_territory_squads(agro_loc, agro_point)
+                reinforce_amount = random.randint(3, 7)
+                if zombie_bot["squads"] >= reinforce_amount:
+                    territory_control[agro_loc][agro_point]["squads"] += reinforce_amount
+                    zombie_bot["squads"] -= reinforce_amount
+                    logs.append(f"🛡️ Агро-укрепление: {agro_loc} {agro_point} +{reinforce_amount}")
+        zombie_bot["agro_points"] = [p for p in zombie_bot["agro_points"] if get_territory_squads(p[0], p[1]) < 10]
     weak_points = []
     for loc, point in controlled:
         current_squads = get_territory_squads(loc, point)
         ptype = POINT_TYPES.get(point, "Территория")
         min_needed = MIN_SQUADS_FOR_POINT.get(ptype, 1)
-        if current_squads < min_needed + 2:
+        if current_squads < min_needed + 1:
             weak_points.append((loc, point, current_squads, min_needed))
-    weak_points.sort(key=lambda x: x[2])
-    for loc, point, current, min_needed in weak_points:
-        needed = min_needed + 3 - current
-        if needed > 0 and zombie_bot["squads"] >= needed:
+    random.shuffle(weak_points)
+    for loc, point, current, min_needed in weak_points[:2]:
+        needed = random.randint(1, 4)
+        if zombie_bot["squads"] >= needed:
             territory_control[loc][point]["squads"] += needed
             zombie_bot["squads"] -= needed
             logs.append(f"🛡️ Укрепление: {loc} {point} +{needed} сквадов")
@@ -1736,8 +1869,11 @@ def zombie_reinforce():
     return logs
 def zombie_take_action(vk_session):
     global zombie_bot
+    phase = get_zombie_phase()
+    strength = get_zombie_strength()
     logs = ["🧟 === ДЕЙСТВИЯ ЗОМБИРОВАННЫХ ==="]
     logs.append(f"⏰ {time.strftime('%H:%M:%S')}")
+    logs.append(f"💪 Сила: {strength} | Фаза: {phase['name']}")
     logs.append("")
     controlled = get_zombie_controlled_locations()
     loot_points = []
@@ -1745,14 +1881,19 @@ def zombie_take_action(vk_session):
         if check_territory_exhaustion(loc, point):
             loot_points.append((loc, point))
     random.shuffle(loot_points)
-    loot_points = loot_points[:3]
-    logs.append("📦 ЛУТАНИЕ:")
+    territories_to_loot = phase["territories"]
+    loot_times = phase["loot_times"]
+    loot_points = loot_points[:territories_to_loot]
+    logs.append(f"📦 ЛУТАНИЕ ({territories_to_loot} точек по {loot_times} раз):")
     if loot_points:
         for loc, point in loot_points:
-            loot_logs = zombie_loot_territory(loc, point, vk_session)
+            loot_logs = zombie_loot_territory_custom(loc, point, loot_times, vk_session)
             logs.extend(loot_logs)
     else:
         logs.append("   Нет доступных точек")
+        if zombie_bot.get("mode") == "loot":
+            zombie_bot["mode"] = "normal"
+            logs.append("   ⚠️ Режим сменён на обычный")
     logs.append("")
     logs.append("💰 ПРОДАЖА:")
     sell_logs = zombie_sell_items()
@@ -1782,21 +1923,28 @@ def zombie_take_action(vk_session):
     else:
         logs.append("   Не требуется")
     logs.append("")
-    logs.append("⚔️ АТАКА:")
-    if zombie_bot["squads"] >= 1:
-        target_loc, target_point, squads_to_send = zombie_choose_target()
-        if target_loc:
-            attack_logs = zombie_attack(target_loc, target_point, squads_to_send, vk_session)
-            logs.extend(attack_logs)
+    mode = zombie_bot.get("mode", "normal")
+    if mode == "aggressive" or mode == "normal":
+        logs.append("⚔️ АТАКА:")
+        if zombie_bot["squads"] >= 1:
+            target_loc, target_point, squads_to_send = zombie_choose_target()
+            if target_loc:
+                attack_logs = zombie_attack(target_loc, target_point, squads_to_send, vk_session)
+                logs.extend(attack_logs)
+            else:
+                logs.append("   Нет доступных целей")
         else:
-            logs.append("   Нет доступных целей")
-    else:
-        logs.append("   Нет сквадов")
+            logs.append("   Нет сквадов")
+    elif mode == "loot":
+        logs.append("⚔️ АТАКА: Режим накопления, атаки отключены")
     logs.append("")
     logs.append(f"📊 ИТОГО:")
     logs.append(f"   💲 {zombie_bot['money']}р")
     logs.append(f"   👨‍👨‍👦‍👦 {zombie_bot['squads']} сквадов")
     logs.append(f"   🍖 {zombie_bot['food_units']} 🏥 {zombie_bot['med_units']} ☢️ {zombie_bot['rad_units']}")
+    logs.append(f"   🎯 Режим: {mode}")
+    if zombie_bot.get("priority_target"):
+        logs.append(f"   🎯 Приоритет: {zombie_bot['priority_target']}")
     next_target = zombie_choose_target()
     if next_target[0]:
         zombie_bot["next_action"] = f"атака {next_target[0]} {next_target[1]} ({next_target[2]} сквадов)"
@@ -1808,6 +1956,49 @@ def zombie_take_action(vk_session):
         send_message(353430025, "\n".join(logs), None, vk_session)
     except:
         pass
+    return logs
+def zombie_loot_territory_custom(loc, point, times, vk_session):
+    global zombie_bot, emission_counter
+    ptype = POINT_TYPES.get(point, "Территория")
+    logs = []
+    total_money = 0
+    total_items = {}
+    for _ in range(times):
+        if not check_territory_exhaustion(loc, point):
+            break
+        add_territory_exhaustion(loc, point)
+        emission_counter += 1
+        if ptype == "Территория":
+            drops = roll_drops(DROP_T, "Территория")
+        elif ptype == "Точка ресурсов":
+            drops = roll_drops(DROP_TR, "Точка ресурсов")
+        elif ptype == "База":
+            drops = roll_drops(DROP_B, "База")
+        elif ptype == "Аномальная зона":
+            money_gain = random.randint(10, 30)
+            total_money += money_gain
+            continue
+        elif ptype == "Логово":
+            money_gain = random.randint(15, 40)
+            total_money += money_gain
+            continue
+        else:
+            drops = roll_drops(DROP_T, "Территория")
+        for item, amount in drops.items():
+            if item == "Деньги":
+                total_money += amount
+            else:
+                total_items[item] = total_items.get(item, 0) + amount
+    zombie_bot["money"] += total_money
+    for item, amount in total_items.items():
+        zombie_bot["backpack"][item] = zombie_bot["backpack"].get(item, 0) + amount
+    logs.append(f"📍 {loc} {point}: 💲{total_money}р")
+    if total_items:
+        items_str = ", ".join([f"{k} x{v}" for k, v in list(total_items.items())[:5]])
+        logs.append(f"   📦 {items_str}")
+    if emission_counter >= EMISSION_MAX:
+        trigger_emission(vk_session)
+    save_data()
     return logs
 def get_zombie_status():
     controlled = get_zombie_controlled_locations()
@@ -1830,6 +2021,39 @@ def get_zombie_status():
     lines.append(f"⏱️ До следующего действия: {mins} мин {secs} сек")
     lines.append(f"📋 Планируемое действие: {zombie_bot['next_action']}")
     return "\n".join(lines)
+def get_zombie_strength():
+    controlled = get_zombie_controlled_locations()
+    total_strength = 0
+    for loc, point in controlled:
+        ptype = POINT_TYPES.get(point, "Территория")
+        total_strength += POINT_STRENGTH.get(ptype, 1)
+    return total_strength
+def get_zombie_phase():
+    strength = get_zombie_strength()
+    current_phase = None
+    for min_strength, phase_data in sorted(ZOMBIE_PHASES.items()):
+        if strength >= min_strength:
+            current_phase = phase_data
+    if current_phase is None:
+        current_phase = ZOMBIE_PHASES[15]
+    return current_phase
+def find_nearest_faction_territory(user_id):
+    p = players[user_id]
+    faction = p.get("faction")
+    current_loc = p.get("location")
+    priority_types = ["База", "Точка ресурсов", "Территория", "Аномальная зона", "Логово"]
+    for ptype in priority_types:
+        for point in LOCATIONS.get(current_loc, []):
+            if POINT_TYPES.get(point) == ptype:
+                if get_territory_owner(current_loc, point) == faction:
+                    return current_loc, point
+    for loc in LOCATIONS:
+        for ptype in priority_types:
+            for point in LOCATIONS.get(loc, []):
+                if POINT_TYPES.get(point) == ptype:
+                    if get_territory_owner(loc, point) == faction:
+                        return loc, point
+    return None, None
 def get_emission_status():
     global emission_counter, EMISSION_MAX
     ratio = emission_counter / EMISSION_MAX
@@ -2012,7 +2236,7 @@ def generate_war_map_image(location):
     try:
         img = Image.open(map_path).convert("RGBA")
         draw = ImageDraw.Draw(img)
-        icon_size = 30
+        icon_size = 45 if location == "Поляна" else 30
         faction_icons = {}
         for faction, icon_path in FACTION_ICONS.items():
             try:
@@ -3334,7 +3558,7 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
     if text.startswith("/сменитьгп ") and is_admin(user_id):
         parts = text_original.split()
         if len(parts) < 3:
-            send_message(user_id, "❌ Формат: /сменитьгп [ник] [группировка]\nГруппировки: долг, грех, одиночки", None, vk_session)
+            send_message(user_id, "❌ Формат: /сменитьгп [ник] [группировка]\nГруппировки: долг, грех, одиночки, зомби", None, vk_session)
             return True
         target_nick = parts[1]
         faction_input = parts[2].lower()
@@ -3342,15 +3566,17 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
         if not target_uid:
             send_message(user_id, "❌ Игрок не найден.", None, vk_session)
             return True
-        faction_map = {"долг": "🛡️ Долг", "грех": "☦️ Грех", "одиночки": "☢️ Одиночки"}
+        faction_map = {"долг": "🛡️ Долг", "грех": "☦️ Грех", "одиночки": "☢️ Одиночки", "зомби": ZOMBIE_FACTION, "зомбированные": ZOMBIE_FACTION}
         if faction_input not in faction_map:
-            send_message(user_id, "❌ Неизвестная группировка. Доступно: долг, грех, одиночки", None, vk_session)
+            send_message(user_id, "❌ Неизвестная группировка. Доступно: долг, грех, одиночки, зомби", None, vk_session)
             return True
         new_faction = faction_map[faction_input]
         old_faction = players[target_uid].get("faction")
         if old_faction and target_uid in factions.get(old_faction, []):
             factions[old_faction].remove(target_uid)
         players[target_uid]["faction"] = new_faction
+        if new_faction not in factions:
+            factions[new_faction] = []
         if target_uid not in factions[new_faction]:
             factions[new_faction].append(target_uid)
         save_data()
@@ -3618,6 +3844,46 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
             secs = ZOMBIE_ACTION_INTERVAL % 60
             send_message(user_id, f"⏱️ Текущий интервал: {mins} мин {secs} сек.\nИспользуйте: /зомби_кд [секунды]", None, vk_session)
             return True
+    if text == "/зомби_цель":
+        if not LAST_STAND_MODE:
+            send_message(user_id, "❌ Режим Последний Рубеж не активен.", None, vk_session)
+            return True
+        if players[user_id].get("faction") != ZOMBIE_FACTION:
+            send_message(user_id, "❌ Вы не в группировке Зомбированных.", None, vk_session)
+            return True
+        leader = get_faction_leader(ZOMBIE_FACTION)
+        if leader != user_id and not is_admin(user_id):
+            send_message(user_id, "❌ Только лидер зомбированных может управлять ботом.", None, vk_session)
+            return True
+        mode = zombie_bot.get("mode", "normal")
+        priority = zombie_bot.get("priority_target")
+        msg = f"🧟 УПРАВЛЕНИЕ ЗОМБИРОВАННЫМИ\n\n🎯 Текущий режим: {mode}\n🎯 Приоритетная цель: {priority if priority else 'не установлена'}\n\nВыберите режим работы бота:"
+        players[user_id]["state"] = "zombie_control"
+        save_data()
+        send_message(user_id, msg, create_zombie_control_keyboard(), vk_session)
+        return True
+    if text.startswith("/зомби_приоритет ") and is_admin(user_id):
+        if not LAST_STAND_MODE:
+            send_message(user_id, "❌ Режим Последний Рубеж не активен.", None, vk_session)
+            return True
+        parts = text.split()
+        if len(parts) < 3:
+            send_message(user_id, "❌ Формат: /зомби_приоритет [локация] [точка]\nПример: /зомби_приоритет Кордон Б1", None, vk_session)
+            return True
+        point = parts[-1].upper()
+        loc_input = " ".join(parts[1:-1]).lower()
+        location_map = {"кордон": "Кордон", "свалка": "Свалка", "тёмная долина": "Тёмная долина", "темная долина": "Тёмная долина", "тд": "Тёмная долина", "поляна": "Поляна"}
+        location = location_map.get(loc_input)
+        if not location:
+            send_message(user_id, "❌ Неизвестная локация.", None, vk_session)
+            return True
+        if not is_valid_point(location, point):
+            send_message(user_id, f"❌ Точка {point} не существует на {location}.", None, vk_session)
+            return True
+        zombie_bot["priority_target"] = (location, point)
+        save_data()
+        send_message(user_id, f"✅ Приоритетная цель: {location} {point}", None, vk_session)
+        return True
     return False
 def generate_inventory_image(user_id):
     p = players[user_id]
@@ -6069,6 +6335,63 @@ def handle_message(event, vk_session):
   if players[user_id].get("mutant_hp", 0) > 0:
    send_message(user_id, "Продолжайте охоту:", create_hunting_keyboard(), vk_session)
    return
+ if state == "zombie_control":
+  if text == "⚔️ Агрессивный захват":
+   zombie_bot["mode"] = "aggressive"
+   save_data()
+   send_message(user_id, "✅ Режим: Агрессивный захват\nБот будет максимально активно атаковать.", create_zombie_control_keyboard(), vk_session)
+   return
+  elif text == "⚖️ Обычный режим":
+   zombie_bot["mode"] = "normal"
+   save_data()
+   send_message(user_id, "✅ Режим: Обычный\nБот будет сбалансированно развиваться.", create_zombie_control_keyboard(), vk_session)
+   return
+  elif text == "📦 Накопление ресурсов":
+   zombie_bot["mode"] = "loot"
+   save_data()
+   send_message(user_id, "✅ Режим: Накопление ресурсов\nБот будет лутать и копить, не атакуя.", create_zombie_control_keyboard(), vk_session)
+   return
+  elif text == "🎯 Установить приоритет":
+   send_message(user_id, "Введите цель в формате: [локация] [точка]\nПример: Кордон Б1", create_back_only_keyboard(), vk_session)
+   players[user_id]["state"] = "zombie_set_priority"
+   save_data()
+   return
+  elif text == "❌ Сбросить приоритет":
+   zombie_bot["priority_target"] = None
+   save_data()
+   send_message(user_id, "✅ Приоритетная цель сброшена.", create_zombie_control_keyboard(), vk_session)
+   return
+  elif text == "🔚 Назад":
+   players[user_id]["state"] = STATE_IN_MENU
+   save_data()
+   send_message(user_id, MAIN_MENU_TEXT, create_main_menu_keyboard(user_id), vk_session)
+   return
+  return
+ if state == "zombie_set_priority":
+  if text == "🔚 Назад":
+   players[user_id]["state"] = "zombie_control"
+   save_data()
+   send_message(user_id, "🧟 Управление зомбированными:", create_zombie_control_keyboard(), vk_session)
+   return
+  parts = text.split()
+  if len(parts) < 2:
+   send_message(user_id, "❌ Формат: [локация] [точка]\nПример: Кордон Б1", create_back_only_keyboard(), vk_session)
+   return
+  point = parts[-1].upper()
+  loc_input = " ".join(parts[:-1]).lower()
+  location_map = {"кордон": "Кордон", "свалка": "Свалка", "тёмная долина": "Тёмная долина", "темная долина": "Тёмная долина", "тд": "Тёмная долина", "поляна": "Поляна"}
+  location = location_map.get(loc_input)
+  if not location:
+   send_message(user_id, "❌ Неизвестная локация.", create_back_only_keyboard(), vk_session)
+   return
+  if not is_valid_point(location, point):
+   send_message(user_id, f"❌ Точка {point} не существует.", create_back_only_keyboard(), vk_session)
+   return
+  zombie_bot["priority_target"] = (location, point)
+  players[user_id]["state"] = "zombie_control"
+  save_data()
+  send_message(user_id, f"✅ Приоритетная цель: {location} {point}", create_zombie_control_keyboard(), vk_session)
+  return
  if state == STATE_WAITING_QUOTE_PHOTO:
   p = players[user_id]
   quote_data = p.get("pending_quote")
