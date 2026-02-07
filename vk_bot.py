@@ -6,6 +6,7 @@ import os
 import random
 import io
 import sqlite3
+import threading
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, ImageEnhance
 from vk_api.longpoll import VkLongPoll, VkEventType
@@ -4713,10 +4714,6 @@ def check_pending_states(vk_session):
                     data.pop("initial_stamina", None)
                     send_message(user_id, "😴 Вы отдохнули и полностью восстановили выносливость.", create_camp_menu_keyboard(), vk_session)
                     updated_any = True
-    if LAST_STAND_MODE:
-        next_action_time = zombie_bot.get("last_action_time", 0) + ZOMBIE_ACTION_INTERVAL
-        if current_time >= next_action_time:
-            zombie_take_action(vk_session)
     if updated_any:
         save_data()
 def handle_message(event, vk_session):
@@ -6686,16 +6683,32 @@ def handle_chat_message(event, vk_session):
             send_message(user_id, f"✅ {players[target_uid]['nickname']} снят с админки.", None, vk_session, peer_id)
             send_message(target_uid, "⚠️ Вы больше не админ.", None, vk_session)
             return
+def background_checker(vk_session):
+    global last_zombie_check
+    last_zombie_check = time.time()
+    while True:
+        try:
+            current_time = time.time()
+            check_pending_states(vk_session)
+            if LAST_STAND_MODE:
+                next_action_time = zombie_bot.get("last_action_time", 0) + ZOMBIE_ACTION_INTERVAL
+                if current_time >= next_action_time:
+                    zombie_take_action(vk_session)
+            time.sleep(10)
+        except Exception as e:
+            logger.error(f"Ошибка в фоновом потоке: {e}")
+            time.sleep(30)
 if __name__ == "__main__":
     load_data()
-    last_check = time.time()
-    CHECK_INTERVAL = 30
     while True:
         try:
             logger.info("🔁 Инициализация VK сессии...")
             vk_session = vk_api.VkApi(token=TOKEN)
             longpoll = VkBotLongPoll(vk_session, GROUP_ID)
             logger.info("✅ Бот запущен и ожидает сообщений...")
+            checker_thread = threading.Thread(target=background_checker, args=(vk_session,), daemon=True)
+            checker_thread.start()
+            logger.info("✅ Фоновый поток проверки запущен...")
             for event in longpoll.listen():
                 if event.type == VkBotEventType.MESSAGE_NEW:
                     message = event.obj.message
@@ -6757,9 +6770,6 @@ if __name__ == "__main__":
                             handle_message(simple_event, vk_session)
                         except Exception as e:
                             logger.error(f"Ошибка обработки сообщения: {e}")
-                if time.time() - last_check >= CHECK_INTERVAL:
-                    check_pending_states(vk_session)
-                    last_check = time.time()
         except (KeyboardInterrupt, SystemExit):
             logger.info("🛑 Бот остановлен вручную.")
             break
