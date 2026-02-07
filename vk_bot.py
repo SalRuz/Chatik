@@ -2930,12 +2930,12 @@ def is_game_open():
             return False
     return True
 def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
-    if user_id in banned_users:
-        return True
     text_original = text.strip()
     text = text_original.lower()
     words = text.split()
     words_original = text_original.split()
+    if user_id in banned_users and not is_admin(user_id):
+        return True
     if text == "инфо":
         current_keyboard = None
         state = players[user_id]["state"]
@@ -3561,18 +3561,25 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
         save_data()
         send_message(user_id, f"✅ Лимит группировки {faction_name} изменён на {new_limit}.", None, vk_session)
         return True
-    if text.startswith("/сменитьгп ") and is_admin(user_id):
+    if text.startswith("/сменитьгп") and is_admin(user_id):
         parts = text_original.split()
-        if len(parts) < 3:
-            send_message(user_id, "❌ Формат: /сменитьгп [ник] [группировка]\nГруппировки: долг, грех, одиночки, зомби", None, vk_session)
+        if len(parts) < 2:
+            send_message(user_id, "❌ Формат: /сменитьгп [ник] [группировка]\nГруппировки: долг, грех, одиночки, зомби\nИли ответьте на сообщение: /сменитьгп [группировка]", None, vk_session)
             return True
-        target_nick = parts[1]
-        faction_input = parts[2].lower()
-        target_uid = find_player_by_mention_or_nickname(target_nick, vk_session)
+        faction_map = {"долг": "🛡️ Долг", "грех": "☦️ Грех", "одиночки": "☢️ Одиночки", "зомби": ZOMBIE_FACTION, "зомбированные": ZOMBIE_FACTION}
+        if reply_user_id and reply_user_id in players and len(parts) == 2:
+            target_uid = reply_user_id
+            faction_input = parts[1].lower()
+        elif len(parts) >= 3:
+            target_nick = " ".join(parts[1:-1])
+            faction_input = parts[-1].lower()
+            target_uid = find_player_by_mention_or_nickname(target_nick, vk_session)
+        else:
+            send_message(user_id, "❌ Формат: /сменитьгп [ник] [группировка]", None, vk_session)
+            return True
         if not target_uid:
             send_message(user_id, "❌ Игрок не найден.", None, vk_session)
             return True
-        faction_map = {"долг": "🛡️ Долг", "грех": "☦️ Грех", "одиночки": "☢️ Одиночки", "зомби": ZOMBIE_FACTION, "зомбированные": ZOMBIE_FACTION}
         if faction_input not in faction_map:
             send_message(user_id, "❌ Неизвестная группировка. Доступно: долг, грех, одиночки, зомби", None, vk_session)
             return True
@@ -3586,7 +3593,7 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
         if target_uid not in factions[new_faction]:
             factions[new_faction].append(target_uid)
         save_data()
-        send_message(user_id, f"✅ Игрок {target_nick} переведён в {new_faction}.", None, vk_session)
+        send_message(user_id, f"✅ Игрок {players[target_uid]['nickname']} переведён в {new_faction}.", None, vk_session)
         send_message(target_uid, f"⚠️ Вас перевели в группировку {new_faction}!", None, vk_session)
         return True
     if text.startswith("/телепорт ") and is_admin(user_id):
@@ -6818,29 +6825,32 @@ def handle_chat_message(event, vk_session):
         save_data()
         send_message(user_id, f"✅ Лимит {faction_name} → {new_limit}.", None, vk_session, peer_id)
         return
-    if text_lower.startswith("/сменитьгп "):
+    if text_lower.startswith("/сменитьгп"):
         parts = text.split()
-        if reply_user_id and len(parts) == 2:
+        if reply_user_id and reply_user_id in players and len(parts) == 2:
             target_uid = reply_user_id
             faction_input = parts[1].lower()
         elif len(parts) >= 3:
-            target_uid = find_player_by_mention_or_nickname(parts[1], vk_session)
-            faction_input = parts[2].lower()
+            target_nick = " ".join(parts[1:-1])
+            faction_input = parts[-1].lower()
+            target_uid = find_player_by_mention_or_nickname(target_nick, vk_session)
         else:
-            send_message(user_id, "❌ Формат: /сменитьгп [ник] [гп]", None, vk_session, peer_id)
+            send_message(user_id, "❌ Формат: /сменитьгп [ник] [гп] или ответом: /сменитьгп [гп]", None, vk_session, peer_id)
             return
         if not target_uid:
             send_message(user_id, "❌ Игрок не найден.", None, vk_session, peer_id)
             return
-        faction_map = {"долг": "🛡️ Долг", "грех": "☦️ Грех", "одиночки": "☢️ Одиночки"}
+        faction_map = {"долг": "🛡️ Долг", "грех": "☦️ Грех", "одиночки": "☢️ Одиночки", "зомби": ZOMBIE_FACTION, "зомбированные": ZOMBIE_FACTION}
         if faction_input not in faction_map:
-            send_message(user_id, "❌ ГП: долг, грех, одиночки", None, vk_session, peer_id)
+            send_message(user_id, "❌ ГП: долг, грех, одиночки, зомби", None, vk_session, peer_id)
             return
         new_faction = faction_map[faction_input]
         old_faction = players[target_uid].get("faction")
         if old_faction and target_uid in factions.get(old_faction, []):
             factions[old_faction].remove(target_uid)
         players[target_uid]["faction"] = new_faction
+        if new_faction not in factions:
+            factions[new_faction] = []
         if target_uid not in factions[new_faction]:
             factions[new_faction].append(target_uid)
         save_data()
