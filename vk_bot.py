@@ -7014,12 +7014,69 @@ def handle_chat_message(event, vk_session):
             send_message(target_uid, "⚠️ Вы больше не админ.", None, vk_session)
             return
 def background_checker(vk_session):
-    global last_zombie_check
-    last_zombie_check = time.time()
     while True:
         try:
             current_time = time.time()
-            check_pending_states(vk_session)
+            for user_id, data in list(players.items()):
+                faction = data.get("faction")
+                if not faction or faction == "None" or faction is None:
+                    continue
+                if data.get("donation_end_time") and current_time >= data.get("donation_end_time"):
+                    remove_donation(user_id, vk_session)
+                if data.get("health", 10) <= 0:
+                    if not data.get("death_notified", False):
+                        lose_random_items_on_death(user_id, vk_session)
+                        continue
+                if data.get("state") == STATE_TRANSITION_WAIT:
+                    end_time = data.get("transition_end_time")
+                    if end_time and current_time >= end_time:
+                        data["previous_location"] = None
+                        data["previous_point"] = None
+                        if random.randint(1, 100) <= 30:
+                            money_found = random.randint(5, 15)
+                            data["money"] = data.get("money", 0) + money_found
+                            transition_msg = f"✅ Переход завершён!\n💲 По пути нашли: {money_found}р"
+                        elif random.randint(1, 100) <= 20:
+                            rad_gain = round(random.uniform(0.5, 1.5), 1)
+                            data["radiation"] = min(10, data["radiation"] + rad_gain)
+                            transition_msg = f"✅ Переход завершён!\n☢️ Получено облучение: +{rad_gain}"
+                        else:
+                            transition_msg = "✅ Переход завершён!"
+                        data["transition_end_time"] = None
+                        data["state"] = STATE_IN_MENU
+                        data["backpack"]["батарейки"] = data["backpack"].get("батарейки", 0) - 2
+                        if data["backpack"]["батарейки"] <= 0:
+                            del data["backpack"]["батарейки"]
+                        transition_msg += "\n🔋 Потрачено 2 батарейки."
+                        current_location = data["location"]
+                        current_point = data["point"]
+                        if (current_location, current_point) in TRANSITION_ROUTES:
+                            destinations = TRANSITION_ROUTES[(current_location, current_point)]
+                            transition_msg += "\n\n📍 Вы на точке перехода!"
+                            for dest_loc, dest_point in destinations:
+                                transition_msg += f"\nТеперь вы можете попасть на {dest_loc} {dest_point}"
+                        send_location_image(user_id, current_location, current_point, transition_msg, create_main_menu_keyboard(user_id), vk_session)
+                        save_data()
+                elif data.get("state") == STATE_RESTING:
+                    start_time = data.get("rest_start_time")
+                    if start_time:
+                        elapsed = current_time - start_time
+                        initial = data.get("initial_stamina", data["stamina"])
+                        belt_bonus = apply_belt_effects_on_rest(user_id)
+                        donation_bonus = 0.5 if has_active_donation(user_id) else 0
+                        total_bonus = 1 + belt_bonus + donation_bonus
+                        elapsed_intervals = int(elapsed // 360)
+                        new_stamina = min(10, initial + elapsed_intervals * total_bonus)
+                        if new_stamina > data["stamina"]:
+                            data["stamina"] = new_stamina
+                            save_data()
+                        if data["stamina"] >= 10:
+                            data["stamina"] = 10
+                            data["state"] = STATE_IN_CAMP
+                            data["rest_start_time"] = None
+                            data.pop("initial_stamina", None)
+                            save_data()
+                            send_message(user_id, "😴 Вы отдохнули и полностью восстановили выносливость.", create_camp_menu_keyboard(), vk_session)
             if LAST_STAND_MODE:
                 next_action_time = zombie_bot.get("last_action_time", 0) + ZOMBIE_ACTION_INTERVAL
                 if current_time >= next_action_time:
