@@ -737,6 +737,8 @@ def reset_all_data():
     territory_control = {}
     faction_leaders = {}
     territory_exhaustion = {}
+    banned_users = {}
+    admin_users = []
     emission_counter = 0
     last_restored_categories = []
     faction_shared_squads = {"🛡️ Долг": 0, "☦️ Грех": 0, "☢️ Одиночки": 0}
