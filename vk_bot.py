@@ -2106,8 +2106,6 @@ def trigger_emission(vk_session):
         faction = p.get("faction")
         if not faction or faction == "None" or faction is None:
             continue
-        if faction == ZOMBIE_FACTION:
-            continue
         state = p.get("state")
         if state in [STATE_WAITING_FOR_START, STATE_READING_INSTRUCTIONS, STATE_CHOOSING_FACTION, STATE_ENTERING_NICKNAME]:
             continue
@@ -2135,7 +2133,8 @@ def trigger_emission(vk_session):
             nickname = p.get("nickname", "Неизвестный")
             location = p.get("location", "?")
             point = p.get("point", "?")
-            dead_players.append(f"• {nickname} ({faction}) — {location} {point}")
+            if faction != ZOMBIE_FACTION:
+                dead_players.append(f"• {nickname} ({faction}) — {location} {point}")
             send_message(uid, "☠️ Вы погибли от выброса! Нужно было укрыться в лагере!", None, vk_session)
     emission_counter = 0
     restored_text = ", ".join(restored)
@@ -2144,8 +2143,6 @@ def trigger_emission(vk_session):
             continue
         faction = p.get("faction")
         if not faction or faction == "None" or faction is None:
-            continue
-        if faction == ZOMBIE_FACTION:
             continue
         state = p.get("state")
         if state in [STATE_WAITING_FOR_START, STATE_READING_INSTRUCTIONS, STATE_CHOOSING_FACTION, STATE_ENTERING_NICKNAME]:
@@ -2159,7 +2156,7 @@ def trigger_emission(vk_session):
         except Exception as e:
             logger.error(f"Ошибка отправки в беседу: {e}")
     elif GAME_CHAT_ID:
-        chat_msg = f"☢️ ВЫБРОС ЗАВЕРШЁН!\n\n✅ Все сталкеры укрылись!\n\n♻️ Восстановлены: {restored_text}"
+        chat_msg = f"☢️ ВЫБРОС завершён!\n\n✅ Все сталкеры укрылись!\n\n♻️ Восстановлены: {restored_text}"
         try:
             vk_session.method("messages.send", {"peer_id": GAME_CHAT_ID, "message": chat_msg, "random_id": 0})
         except Exception as e:
