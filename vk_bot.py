@@ -3657,7 +3657,15 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
 
 🔹 /зомби_кд [секунды]
    Изменить интервал действий зомбированных
-   Пример: /зомби_кд 900 (15 минут)"""
+   Пример: /зомби_кд 900 (15 минут)
+   
+🔹 /рыцарь [ник]
+   Экипировать игрока лучшим снаряжением Долга и +500 сквадов
+   Пример: /рыцарь НикИгрока
+
+🔹 /зомби_сила [+-число]
+   Добавить/убрать бонусные сквады зомби
+   Пример: /зомби_сила +50"""
         send_message(user_id, admin_help, None, vk_session)
         return True
     if text.startswith("/лимит ") and is_admin(user_id):
@@ -3908,7 +3916,7 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
         elapsed = current_time - start_time
         initial = p.get("initial_stamina", p["stamina"])
         belt_bonus = apply_belt_effects_on_rest(user_id)
-        donation_bonus = 0.5 if has_active_donation(user_id) else 0
+        donation_bonus = 1 if has_active_donation(user_id) else 0
         total_bonus = 1 + belt_bonus + donation_bonus
         elapsed_intervals = int(elapsed // 360)
         current_stamina = min(10, initial + elapsed_intervals * total_bonus)
@@ -4054,6 +4062,44 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
             send_message(user_id, f"✅ Сквады зомби изменены на {value}.\nТекущие сквады: {zombie_bot['squads']}\nБонус: {zombie_bot['bonus_squads']}", None, vk_session)
         except:
             send_message(user_id, "❌ Укажите число. Пример: /зомби_сила +50", None, vk_session)
+        return True
+    if text.startswith("/рыцарь") and is_admin(user_id):
+        parts = text_original.split()
+        if len(parts) >= 2:
+            target_nick = " ".join(parts[1:])
+            target_uid = find_player_by_mention_or_nickname(target_nick, vk_session)
+            if not target_uid:
+                send_message(user_id, "❌ Игрок не найден.", None, vk_session)
+                return True
+        elif reply_user_id and reply_user_id in players:
+            target_uid = reply_user_id
+        else:
+            target_uid = user_id
+        p = players[target_uid]
+        p["weapon"] = "Гром С14"
+        p["weapon_durability"] = 4
+        p["weapon_max_durability"] = 4
+        p["weapon_damage"] = 4.5
+        p["weapon_accuracy"] = 3
+        p["armor"] = "Экзоскелет «Долга»"
+        p["armor_durability"] = 7
+        p["armor_max_durability"] = 7
+        p["bullet_resist"] = 4
+        p["blast_resist"] = 5
+        p["anomaly_resist"] = 1
+        p["detector"] = "Сварог"
+        p["detector_charge"] = 24
+        p["detector_max_charge"] = 24
+        p["squads"] = p.get("squads", 0) + 500
+        p["health"] = 10
+        p["radiation"] = 0
+        p["hunger"] = 0
+        p["stamina"] = 10
+        save_data()
+        target_name = players[target_uid]["nickname"]
+        send_message(user_id, f"⚔️ {target_name} экипирован как Рыцарь Долга!\n\n🔫 Гром С14\n🦺 Экзоскелет «Долга»\n📟 Сварог\n👨‍👨‍👦‍👦 +500 сквадов\n❤️ Полное восстановление", None, vk_session)
+        if target_uid != user_id:
+            send_message(target_uid, "⚔️ Вы экипированы как Рыцарь Долга!\n\n🔫 Гром С14\n🦺 Экзоскелет «Долга»\n📟 Сварог\n👨‍👨‍👦‍👦 +500 сквадов", None, vk_session)
         return True
     return False
 def generate_inventory_image(user_id):
@@ -5146,7 +5192,7 @@ def check_pending_states(vk_session):
                 elapsed_minutes = int((current_time - start_time) // 360)
                 initial = data.get("initial_stamina", data["stamina"])
                 belt_bonus = apply_belt_effects_on_rest(user_id)
-                donation_bonus = 0.5 if has_active_donation(user_id) else 0
+                donation_bonus = 1 if has_active_donation(user_id) else 0
                 new_stamina = min(10, initial + elapsed_minutes * (1 + belt_bonus + donation_bonus))
                 if new_stamina > data["stamina"]:
                     data["stamina"] = new_stamina
@@ -6030,7 +6076,7 @@ def handle_message(event, vk_session):
    elapsed = time.time() - start_time
    initial = players[user_id].get("initial_stamina", players[user_id]["stamina"])
    belt_bonus = apply_belt_effects_on_rest(user_id)
-   donation_bonus = 0.5 if has_active_donation(user_id) else 0
+   donation_bonus = 1 if has_active_donation(user_id) else 0
    new_stamina = min(10, initial + int(elapsed // 360) * (1 + belt_bonus + donation_bonus))
    if new_stamina > players[user_id]["stamina"]:
     players[user_id]["stamina"] = new_stamina
