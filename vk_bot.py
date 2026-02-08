@@ -740,7 +740,7 @@ def reset_all_data():
     LAST_STAND_MODE = False
     faction_warehouses = {"🛡️ Долг": {}, "☦️ Грех": {}, "☢️ Одиночки": {}, ZOMBIE_FACTION: {}}
     faction_warehouse_money = {"🛡️ Долг": 0, "☦️ Грех": 0, "☢️ Одиночки": 0, ZOMBIE_FACTION: 0}
-    zombie_bot = {"money": 0, "squads": 0, "food_units": 0, "med_units": 0, "rad_units": 0, "last_action_time": 0, "next_action": "", "backpack": {}, "mode": "normal", "priority_target": None, "agro_points": [], "last_attacked_by": None}
+    zombie_bot = {"money": 0, "squads": 0, "food_units": 0, "med_units": 0, "rad_units": 0, "last_action_time": 0, "next_action": "", "backpack": {}, "mode": "normal", "priority_target": None, "agro_points": [], "last_attacked_by": None, "pending_target": None, "last_logs": [], "bonus_squads": 0}
     init_territory_control()
     init_territory_exhaustion()
     save_data()
