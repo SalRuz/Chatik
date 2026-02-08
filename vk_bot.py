@@ -1739,9 +1739,7 @@ def zombie_choose_target():
         loc, point = priority
         current_owner = get_territory_owner(loc, point)
         if current_owner == ZOMBIE_FACTION:
-            current_squads = get_territory_squads(loc, point)
-            if current_squads < 10:
-                return loc, point, min(5, zombie_bot["squads"])
+            pass
         else:
             controlled = get_zombie_controlled_locations()
             can_reach = False
@@ -1788,7 +1786,11 @@ def zombie_choose_target():
             return None, None, 0
     if zombie_bot.get("agro_points"):
         for agro_loc, agro_point in list(zombie_bot["agro_points"]):
-            if get_territory_owner(agro_loc, agro_point) != ZOMBIE_FACTION:
+            owner = get_territory_owner(agro_loc, agro_point)
+            if owner == ZOMBIE_FACTION:
+                zombie_bot["agro_points"].remove((agro_loc, agro_point))
+                continue
+            if owner != ZOMBIE_FACTION:
                 enemy_squads = get_territory_squads(agro_loc, agro_point)
                 ptype = POINT_TYPES.get(agro_point, "Территория")
                 min_needed = MIN_SQUADS_FOR_POINT.get(ptype, 1)
@@ -1798,7 +1800,10 @@ def zombie_choose_target():
     targets = get_zombie_available_targets()
     if not targets:
         return None, None, 0
-    selected = random.choice(targets)
+    valid_targets = [t for t in targets if t["owner"] != ZOMBIE_FACTION]
+    if not valid_targets:
+        return None, None, 0
+    selected = random.choice(valid_targets)
     loc, point = selected["loc"], selected["point"]
     owner = selected["owner"]
     enemy_squads = selected["squads"]
@@ -1817,6 +1822,9 @@ def zombie_attack(loc, point, squad_count, vk_session):
     global zombie_bot, territory_control
     logs = []
     owner = get_territory_owner(loc, point)
+    if owner == ZOMBIE_FACTION:
+        logs.append(f"ℹ️ {loc} {point} уже под контролем зомби")
+        return logs
     enemy_squads = get_territory_squads(loc, point)
     ptype = POINT_TYPES.get(point, "Территория")
     min_needed = MIN_SQUADS_FOR_POINT.get(ptype, 1)
@@ -1990,14 +1998,14 @@ def zombie_take_action(vk_session):
                 territory_control[loc][point]["squads"] += reinforce
                 zombie_bot["squads"] -= reinforce
                 logs.append(f"🛡️ ПРИОРИТЕТНОЕ УКРЕПЛЕНИЕ:")
-                logs.append(f"   {loc} {point} +{reinforce} сквадов")
+                logs.append(f"   {loc} {point} +{reinforce} сквадов (теперь {current_squads + reinforce})")
             else:
                 logs.append("🛡️ УКРЕПЛЕНИЕ:")
                 reinforce_logs = zombie_reinforce()
                 if reinforce_logs:
                     logs.extend(reinforce_logs)
                 else:
-                    logs.append("   Не требуется")
+                    logs.append("   Приоритет укреплён достаточно")
         else:
             logs.append("🛡️ УКРЕПЛЕНИЕ:")
             reinforce_logs = zombie_reinforce()
@@ -2018,15 +2026,24 @@ def zombie_take_action(vk_session):
         logs.append("⚔️ АТАКА:")
         pending = zombie_bot.get("pending_target")
         if pending:
-            logs.append(f"   ⏳ Копим сквады для: {pending[0]} {pending[1]} (нужно {pending[2]})")
+            p_loc, p_point, p_squads = pending
+            if get_territory_owner(p_loc, p_point) == ZOMBIE_FACTION:
+                zombie_bot["pending_target"] = None
+                logs.append(f"   ✅ Цель {p_loc} {p_point} уже захвачена")
+            else:
+                logs.append(f"   ⏳ Копим сквады для: {p_loc} {p_point} (нужно {p_squads}, есть {zombie_bot['squads']})")
         if zombie_bot["squads"] >= 1:
             target_loc, target_point, squads_to_send = zombie_choose_target()
             if target_loc:
-                attack_logs = zombie_attack(target_loc, target_point, squads_to_send, vk_session)
-                logs.extend(attack_logs)
+                target_owner = get_territory_owner(target_loc, target_point)
+                if target_owner == ZOMBIE_FACTION:
+                    logs.append(f"   ℹ️ {target_loc} {target_point} уже под контролем")
+                else:
+                    attack_logs = zombie_attack(target_loc, target_point, squads_to_send, vk_session)
+                    logs.extend(attack_logs)
             else:
-                if not pending:
-                    logs.append("   Нет доступных целей")
+                if not pending or get_territory_owner(pending[0], pending[1]) == ZOMBIE_FACTION:
+                    logs.append("   Нет доступных целей или копим силы")
         else:
             logs.append("   Нет сквадов")
     elif mode == "loot":
@@ -2038,13 +2055,19 @@ def zombie_take_action(vk_session):
     logs.append(f"   🍖 {zombie_bot['food_units']} 🏥 {zombie_bot['med_units']} ☢️ {zombie_bot['rad_units']}")
     logs.append(f"   🎯 Режим: {mode}")
     if priority:
-        logs.append(f"   🎯 Приоритет: {priority[0]} {priority[1]}")
+        owner = get_territory_owner(priority[0], priority[1])
+        status = "✅ под контролем" if owner == ZOMBIE_FACTION else f"⚔️ у {owner if owner else 'нейтрал'}"
+        logs.append(f"   🎯 Приоритет: {priority[0]} {priority[1]} ({status})")
     next_target = zombie_choose_target()
     if next_target[0]:
         zombie_bot["next_action"] = f"атака {next_target[0]} {next_target[1]} ({next_target[2]} сквадов)"
     elif zombie_bot.get("pending_target"):
         p = zombie_bot["pending_target"]
-        zombie_bot["next_action"] = f"накопление для {p[0]} {p[1]} ({p[2]} сквадов)"
+        if get_territory_owner(p[0], p[1]) != ZOMBIE_FACTION:
+            zombie_bot["next_action"] = f"накопление для {p[0]} {p[1]} ({p[2]} сквадов)"
+        else:
+            zombie_bot["pending_target"] = None
+            zombie_bot["next_action"] = "поиск новой цели"
     else:
         zombie_bot["next_action"] = "лутание и накопление"
     zombie_bot["last_action_time"] = time.time()
