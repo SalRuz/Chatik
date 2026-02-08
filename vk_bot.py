@@ -14,8 +14,8 @@ from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from vk_api.bot_longpoll import VkBotLongPoll, VkBotEventType
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-TOKEN = "vk1.a.CU2M1F0_9rxlYYuzK57JMRnY3XO2WmOP_TpXDxHbki0AM_mwV-_eBjjfF8ByZHz--fIHilfQD6oS4_bcqG-cc_GUaDln_X87jt6lG8bVX5MJUribi1nPEbY9pY1X3j-FGoq2Hc-CF2GDvAzalh9VmYtT-iFmyTDepaeJwZXZyYU0eFZg7BwhHnuqmIhQrdiG5LqhWWf9Pn536k1MVKAknQ"
-GROUP_ID = 233350137
+TOKEN = "vk1.a.1xW2SgtNrmY7IT0LXBRgdZ5Ty3Rk-9t9LusZjvEx_ErEfeKkAN2HF9ONYimFKsQ6cnEhCgQamxjTZC-jxMjNYI76FTou6rmb1zbZBlx7ZVw-pCkant8aaWcAuG04dDgohdLlPbS7Jb53A1L0Eoy3wxhc0xiP47dumu8xop07a2-WoZM77xWTkxWTtI5ce5wXDdaNdMJXUefT27BtXk0erg"
+GROUP_ID = 221169719
 DATA_DIR = Path("data")
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH = DATA_DIR / "bot.db"
@@ -139,7 +139,7 @@ ARTIFACT_INFO_TEXT = "💡 Информация об артефактах: \n \n
 EXHAUSTION_LIMITS = {"База": 200,"Точка ресурсов": 150,"Территория": 100,"Логово": 30, "Аномальная зона": 10}
 EMISSION_MAX = 350
 EMISSION_WARNING = 335
-GAME_CHAT_ID = 2000000005 
+GAME_CHAT_ID = 2000000003 
 shared_warehouse = {}
 territory_control = {}
 faction_leaders = {}
