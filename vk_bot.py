@@ -2432,6 +2432,7 @@ def process_attack(attacker_id, location, point, squad_count, with_player, vk_se
         return f"⚠️ Территория освобождена, но недостаточно сквадов для удержания (нужно {min_squads}).\n🔙 {remaining_attacker_squads} сквадов вернулось к вам.{bonus_msg}"
 def handle_war_death(dead_id, killer_id, vk_session):
     dead = players[dead_id]
+    dead_faction = dead.get("faction")
     backpack = dead.get("backpack", {})
     money = dead.get("money", 0)
     lost_items = {}
@@ -2456,7 +2457,7 @@ def handle_war_death(dead_id, killer_id, vk_session):
     dead["money"] -= money_lost
     dead["health"] = 0
     dead["death_notified"] = True
-    if killer_id and killer_id in players:
+    if killer_id and killer_id in players and dead_faction != ZOMBIE_FACTION:
         killer = players[killer_id]
         for item, count in lost_items.items():
             killer["backpack"][item] = killer["backpack"].get(item, 0) + count
