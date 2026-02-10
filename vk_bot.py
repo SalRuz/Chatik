@@ -47,7 +47,7 @@ ARTIFACT_ICONS["Стейк"] = "icons/Стейк.png"
 ARTIFACT_EFFECTS["Пончик"] = {"heal_on_consume": 0.5}
 ARTIFACT_EFFECTS["Стейк"] = {"hunger_on_consume": 0.5}
 DONATION_DURATIONS = {"день": 86400,"неделя": 604800,"месяц": 2592000}
-DONATION_EXCLUDED_ITEMS = ["водка", "сигареты", "энергетик нонстоп", "энергетик сталкер", "геркулес"]
+DONATION_EXCLUDED_ITEMS = ["энергетик нонстоп", "энергетик сталкер", "геркулес"]
 players = {}
 factions = {"🛡️ Долг": [], "☦️ Грех": [], "☢️ Одиночки": []}
 MAX_FACTION_SIZES = {"🛡️ Долг": 5, "☦️ Грех": 5, "☢️ Одиночки": 5}
@@ -137,15 +137,91 @@ MUTANTS = {"тушканчик": [{"name": "Слабый тушканчик", "h
 MUTANT_SPAWN_CHANCES = {"Кордон": {"Л1": {"тушканчик": 20, "слепой пёс": 5, "псевдопёс": 0, "плоть": 10, "кабан": 15, "кровосос": 0}, "Л2": {"тушканчик": 15, "слепой пёс": 20, "псевдопёс": 0, "плоть": 5, "кабан": 20, "кровосос": 0}, "Л3": {"тушканчик": 10, "слепой пёс": 20, "псевдопёс": 10, "плоть": 10, "кабан": 15, "кровосос": 0}, "Л4": {"тушканчик": 10, "слепой пёс": 20, "псевдопёс": 15, "плоть": 10, "кабан": 15, "кровосос": 0}, "Л5": {"тушканчик": 5, "слепой пёс": 25, "псевдопёс": 15, "плоть": 10, "кабан": 15, "кровосос": 0}}, "Свалка": {"Л1": {"тушканчик": 20, "слепой пёс": 15, "псевдопёс": 10, "плоть": 5, "кабан": 5, "кровосос": 0}, "Л2": {"тушканчик": 10, "слепой пёс": 20, "псевдопёс": 15, "плоть": 5, "кабан": 5, "кровосос": 0}, "Л3": {"тушканчик": 15, "слепой пёс": 20, "псевдопёс": 10, "плоть": 10, "кабан": 10, "кровосос": 0}, "Л4": {"тушканчик": 10, "слепой пёс": 10, "псевдопёс": 0, "плоть": 30, "кабан": 10, "кровосос": 0}}, "Тёмная долина": {"Л1": {"тушканчик": 5, "слепой пёс": 10, "псевдопёс": 20, "плоть": 0, "кабан": 5, "кровосос": 15}, "Л2": {"тушканчик": 10, "слепой пёс": 5, "псевдопёс": 5, "плоть": 15, "кабан": 10, "кровосос": 5}, "Л3": {"тушканчик": 15, "слепой пёс": 10, "псевдопёс": 15, "плоть": 5, "кабан": 10, "кровосос": 5}, "Л4": {"тушканчик": 15, "слепой пёс": 20, "псевдопёс": 15, "плоть": 5, "кабан": 10, "кровосос": 0}}, "Поляна": {"Л1": {"тушканчик": 15, "слепой пёс": 10, "псевдопёс": 15, "плоть": 10, "кабан": 10, "кровосос": 5}, "Л2": {"тушканчик": 15, "слепой пёс": 20, "псевдопёс": 10, "плоть": 10, "кабан": 10, "кровосос": 0}}}
 ARTIFACT_INFO_TEXT = "💡 Информация об артефактах: \n \n➖ Восстановление здоровья:\n \n🌒 Кровь камня +0.25❤️\n🌓 Ломоть мяса +0.5❤️\n🌔 Душа +0.75❤️\n🌕 Светляк +1❤️\n \n➖ Вывод радиации:\n \n🌒 Колобок -0.25☢️\n🌓 Медуза -0.5☢️\n🌔 Слизняк -0.75☢️\n🌕 Пузырь -1☢️\n \n➖ Восстановление сил при отдыхе: \n \n🌒 Вспышка +0.5⚡\n🌓 Снежинка +1⚡\n🌔 Лунный свет +1.5⚡\n🌕 Батарейка +2⚡\n \n➖ Защита от разрыва:\n \n🌒 Бенгальский огонь +0.25🐾\n🌓 Выверт +0.5🐾\n🌔 Грави +0.75🐾\n🌕 Золотая рыбка +1🐾\n \n➖ Пулестойкость:\n \n🌒 Пустышка +0.5🛡️\n🌓 Каменный цветок +1🛡️\n🌔 Ночная звезда +1.5🛡️\n🌕 Кристалл +2🛡️\n \n➖ Аномальная защита:\n \n🌒 Колючка +0.25💥\n🌓 Пламя +0.5💥\n🌔 Огненный шар +0.75💥\n🌕 Плёнка +1💥\n \n➖ Нанесение урона:\n \n🌒 Глаз +0.5💢\n🌓 Капли +1💢\n🌔 Кристальная колючка +1.5💢\n🌕 Пружина +2💢\n \n➖ Точность попадания: \n \n🌒 Слизь +0.5🎯\n🌓 Слюда +1🎯\n🌔 Мамины бусы +1.5🎯\n🌕 Морской ёж +2🎯"
 EXHAUSTION_LIMITS = {"База": 200,"Точка ресурсов": 150,"Территория": 100,"Логово": 30, "Аномальная зона": 10}
-EMISSION_MAX = 350
-EMISSION_WARNING = 335
 GAME_CHAT_ID = 2000000003 
 shared_warehouse = {}
 territory_control = {}
 faction_leaders = {}
 territory_exhaustion = {}
-emission_counter = 0
+emission_schedule = []
+emission_warned = []
 last_restored_categories = []
+def generate_emission_schedule():
+    global emission_schedule, emission_warned
+    now = time.time()
+    emission_schedule = [t for t in emission_schedule if t > now]
+    if emission_schedule:
+        return
+    moscow_offset = 3 * 3600
+    moscow_now = now + moscow_offset
+    moscow_midnight = moscow_now - (moscow_now % 86400)
+    utc_midnight = moscow_midnight - moscow_offset
+    for day_offset in range(3):
+        day_start = utc_midnight + day_offset * 86400
+        window_start = day_start + 8 * 3600
+        window_end = day_start + 23 * 3600
+        if window_end <= now:
+            continue
+        effective_start = max(window_start, now + 900)
+        if effective_start >= window_end:
+            continue
+        num = random.randint(2, 4)
+        day_times = []
+        for _ in range(200):
+            t = random.uniform(effective_start, window_end)
+            ok = True
+            for existing in day_times:
+                if abs(t - existing) < 7200:
+                    ok = False
+                    break
+            if ok:
+                day_times.append(t)
+            if len(day_times) >= num:
+                break
+        emission_schedule.extend(day_times)
+        break
+    emission_schedule.sort()
+    emission_warned = []
+    save_data()
+def get_next_emission_time():
+    now = time.time()
+    for t in emission_schedule:
+        if t > now:
+            return t
+    return None
+def check_emissions(vk_session):
+    global emission_schedule, emission_warned
+    now = time.time()
+    if not emission_schedule:
+        generate_emission_schedule()
+        return
+    for emission_time in list(emission_schedule):
+        remaining = emission_time - now
+        if remaining <= 0:
+            trigger_emission(vk_session)
+            if emission_time in emission_schedule:
+                emission_schedule.remove(emission_time)
+            if emission_time in emission_warned:
+                emission_warned.remove(emission_time)
+            save_data()
+            if not emission_schedule:
+                generate_emission_schedule()
+            return
+        elif remaining <= 600 and emission_time not in emission_warned:
+            emission_warned.append(emission_time)
+            mins_left = int(remaining // 60)
+            for uid in players:
+                if uid in banned_users:
+                    continue
+                p = players[uid]
+                faction = p.get("faction")
+                if not faction or faction == "None" or faction is None:
+                    continue
+                state = p.get("state")
+                if state in [STATE_WAITING_FOR_START, STATE_READING_INSTRUCTIONS, STATE_CHOOSING_FACTION, STATE_ENTERING_NICKNAME]:
+                    continue
+                send_message(uid, f"⚠️ ВНИМАНИЕ! Выброс через ~{mins_left} минут! Укройтесь в лагере!", None, vk_session)
+            save_data()
+            return
 faction_shared_squads = {"🛡️ Долг": 0, "☦️ Грех": 0, "☢️ Одиночки": 0}
 banned_users = {}
 admin_users = []
@@ -544,13 +620,14 @@ def load_data():
     territory_control = load_state("territory_control", {})
     faction_leaders = load_state("faction_leaders", {})
     territory_exhaustion = load_state("territory_exhaustion", {})
-    emission_counter = load_state("emission_counter", 0)
     last_restored_categories = load_state("last_restored_categories", [])
+    global emission_schedule, emission_warned
+    emission_schedule = load_state("emission_schedule", [])
+    emission_warned = load_state("emission_warned", [])
     faction_shared_squads = load_state("faction_shared_squads", {"🛡️ Долг": 0, "☦️ Грех": 0, "☢️ Одиночки": 0})
     global LAST_STAND_MODE, faction_warehouses, faction_warehouse_money, zombie_bot
     LAST_STAND_MODE = load_state("last_stand_mode", False)
     global EMISSION_MAX, ZOMBIE_ACTION_INTERVAL
-    EMISSION_MAX = load_state("emission_max", 350)
     ZOMBIE_ACTION_INTERVAL = load_state("zombie_action_interval", 1800)
     faction_warehouses = load_state("faction_warehouses", {"🛡️ Долг": {}, "☦️ Грех": {}, "☢️ Одиночки": {}, ZOMBIE_FACTION: {}})
     faction_warehouse_money = load_state("faction_warehouse_money", {"🛡️ Долг": 0, "☦️ Грех": 0, "☢️ Одиночки": 0, ZOMBIE_FACTION: 0})
@@ -591,14 +668,14 @@ def save_data():
         save_state("territory_control", territory_control)
         save_state("faction_leaders", faction_leaders)
         save_state("territory_exhaustion", territory_exhaustion)
-        save_state("emission_counter", emission_counter)
         save_state("last_restored_categories", last_restored_categories)
+        save_state("emission_schedule", emission_schedule)
+        save_state("emission_warned", emission_warned)
         save_state("faction_shared_squads", faction_shared_squads)
         save_state("last_stand_mode", LAST_STAND_MODE)
         save_state("faction_warehouses", faction_warehouses)
         save_state("faction_warehouse_money", faction_warehouse_money)
         save_state("zombie_bot", zombie_bot)
-        save_state("emission_max", EMISSION_MAX)
         save_state("zombie_action_interval", ZOMBIE_ACTION_INTERVAL)
         save_state("banned_users", banned_users)
         save_state("admin_users", admin_users)
@@ -728,8 +805,9 @@ def send_location_image(user_id, location, point, message, keyboard, vk_session)
         send_message(user_id, message, keyboard, vk_session)
 def reset_all_data():
     global players, factions, shared_warehouse, shared_warehouse_money, territory_control
-    global faction_leaders, territory_exhaustion, emission_counter, last_restored_categories
+    global faction_leaders, territory_exhaustion, last_restored_categories
     global faction_shared_squads, LAST_STAND_MODE, faction_warehouses, faction_warehouse_money, zombie_bot
+    global emission_schedule, emission_warned, banned_users, admin_users
     players = {}
     factions = {"🛡️ Долг": [], "☦️ Грех": [], "☢️ Одиночки": []}
     shared_warehouse = {}
@@ -739,7 +817,8 @@ def reset_all_data():
     territory_exhaustion = {}
     banned_users = {}
     admin_users = []
-    emission_counter = 0
+    emission_schedule = []
+    emission_warned = []
     last_restored_categories = []
     faction_shared_squads = {"🛡️ Долг": 0, "☦️ Грех": 0, "☢️ Одиночки": 0}
     LAST_STAND_MODE = False
@@ -748,6 +827,7 @@ def reset_all_data():
     zombie_bot = {"money": 0, "squads": 0, "food_units": 0, "med_units": 0, "rad_units": 0, "last_action_time": 0, "next_action": "", "backpack": {}, "mode": "normal", "priority_target": None, "agro_points": [], "last_attacked_by": None, "pending_target": None, "last_logs": [], "bonus_squads": 0}
     init_territory_control()
     init_territory_exhaustion()
+    generate_emission_schedule()
     save_data()
     logger.info("✅ Все данные сброшены!")
 def get_belt_bonus(user_id, stat):
@@ -1233,7 +1313,6 @@ def handle_exploration(user_id, vk_session):
             return
         send_message(user_id, "🔍 Исследование...", create_empty_keyboard(), vk_session)
         add_territory_exhaustion(location, point)
-        increment_emission(vk_session)
         p["stamina"] = max(0, p["stamina"] - 1)
         p["hunger"] = min(10, p["hunger"] + 0.5)
         status_messages = []
@@ -1315,7 +1394,6 @@ def handle_exploration(user_id, vk_session):
             return
         send_message(user_id, "🔍 Исследование...", create_empty_keyboard(), vk_session)
         add_territory_exhaustion(location, point)
-        increment_emission(vk_session)
         p["stamina"] = max(0, p["stamina"] - 1)
         p["hunger"] = min(10, p["hunger"] + 0.5)
         status_messages = []
@@ -1416,7 +1494,6 @@ def handle_exploration(user_id, vk_session):
         return
     send_message(user_id, "🔍 Исследование...", create_empty_keyboard(), vk_session)
     add_territory_exhaustion(location, point)
-    increment_emission(vk_session)
     p["stamina"] = max(0, p["stamina"] - 1)
     p["hunger"] = min(10, p["hunger"] + 0.5)
     radiation_gain = get_radiation_gain(ptype)
@@ -1483,13 +1560,15 @@ def init_territory_exhaustion():
             territory_exhaustion[loc][point] = 0
     save_data()
 def init_last_stand_mode():
-    global players, factions, territory_control, territory_exhaustion, emission_counter
+    global players, factions, territory_control, territory_exhaustion
     global last_restored_categories, faction_shared_squads, LAST_STAND_MODE
     global faction_warehouses, faction_warehouse_money, zombie_bot
+    global emission_schedule, emission_warned
     LAST_STAND_MODE = True
     territory_control = {}
     territory_exhaustion = {}
-    emission_counter = 0
+    emission_schedule = []
+    emission_warned = []
     last_restored_categories = []
     faction_shared_squads = {"🛡️ Долг": 0, "☦️ Грех": 0, "☢️ Одиночки": 0, ZOMBIE_FACTION: 0}
     faction_warehouses = {"🛡️ Долг": {}, "☦️ Грех": {}, "☢️ Одиночки": {}, ZOMBIE_FACTION: {}}
@@ -1515,15 +1594,18 @@ def init_last_stand_mode():
             p["point"] = start_point
             p["state"] = STATE_IN_MENU
             p["transition_end_time"] = None
+    generate_emission_schedule()
     save_data()
 def init_last_stand_mode_v2():
-    global players, factions, territory_control, territory_exhaustion, emission_counter
+    global players, factions, territory_control, territory_exhaustion
     global last_restored_categories, faction_shared_squads, LAST_STAND_MODE
     global faction_warehouses, faction_warehouse_money, zombie_bot
+    global emission_schedule, emission_warned
     LAST_STAND_MODE = True
     territory_control = {}
     territory_exhaustion = {}
-    emission_counter = 0
+    emission_schedule = []
+    emission_warned = []
     last_restored_categories = []
     faction_shared_squads = {"🛡️ Долг": 0, "☦️ Грех": 0, "☢️ Одиночки": 0, ZOMBIE_FACTION: 0}
     faction_warehouses = {"🛡️ Долг": {}, "☦️ Грех": {}, "☢️ Одиночки": {}, ZOMBIE_FACTION: {}}
@@ -1553,6 +1635,7 @@ def init_last_stand_mode_v2():
         if faction and faction != ZOMBIE_FACTION:
             p["state"] = STATE_IN_MENU
             p["transition_end_time"] = None
+    generate_emission_schedule()
     save_data()
 def get_zombie_controlled_locations():
     controlled = []
@@ -1582,7 +1665,7 @@ def get_zombie_available_targets():
     random.shuffle(targets)
     return targets
 def zombie_loot_territory(loc, point, vk_session):
-    global zombie_bot, emission_counter
+    global zombie_bot
     ptype = POINT_TYPES.get(point, "Территория")
     logs = []
     total_money = 0
@@ -1591,7 +1674,6 @@ def zombie_loot_territory(loc, point, vk_session):
         if not check_territory_exhaustion(loc, point):
             break
         add_territory_exhaustion(loc, point)
-        emission_counter += 1
         if ptype == "Территория":
             drops = roll_drops(DROP_T, "Территория")
         elif ptype == "Точка ресурсов":
@@ -1620,8 +1702,6 @@ def zombie_loot_territory(loc, point, vk_session):
     if total_items:
         items_str = ", ".join([f"{k} x{v}" for k, v in total_items.items()])
         logs.append(f"   📦 {items_str}")
-    if emission_counter >= EMISSION_MAX:
-        trigger_emission(vk_session)
     save_data()
     return logs
 def zombie_convert_items():
@@ -1944,10 +2024,17 @@ def zombie_territory_attacked(location, point, attacker_faction, vk_session):
     zombie_bot["agro_points"] = agro_points
     zombie_bot["last_attacked_by"] = attacker_faction
     save_data()
+    alert_msg = f"🚨 АГРО! {attacker_faction} атаковал {location} {point}!"
     try:
-        send_message(353430025, f"🚨 АГРО! {attacker_faction} атаковал {location} {point}!", None, vk_session)
+        send_message(353430025, alert_msg, None, vk_session)
     except:
         pass
+    zombie_leader = get_faction_leader(ZOMBIE_FACTION)
+    if zombie_leader and zombie_leader != 353430025 and zombie_leader in players:
+        try:
+            send_message(zombie_leader, alert_msg, None, vk_session)
+        except:
+            pass
 def zombie_reinforce():
     global zombie_bot, territory_control
     logs = []
@@ -2133,9 +2220,15 @@ def zombie_take_action(vk_session):
         send_message(353430025, "\n".join(logs), None, vk_session)
     except:
         pass
+    zombie_leader = get_faction_leader(ZOMBIE_FACTION)
+    if zombie_leader and zombie_leader != 353430025 and zombie_leader in players:
+        try:
+            send_message(zombie_leader, "\n".join(logs), None, vk_session)
+        except:
+            pass
     return logs
 def zombie_loot_territory_custom(loc, point, times, vk_session):
-    global zombie_bot, emission_counter
+    global zombie_bot
     ptype = POINT_TYPES.get(point, "Территория")
     logs = []
     total_money = 0
@@ -2144,7 +2237,6 @@ def zombie_loot_territory_custom(loc, point, times, vk_session):
         if not check_territory_exhaustion(loc, point):
             break
         add_territory_exhaustion(loc, point)
-        emission_counter += 1
         if ptype == "Территория":
             drops = roll_drops(DROP_T, "Территория")
         elif ptype == "Точка ресурсов":
@@ -2173,8 +2265,6 @@ def zombie_loot_territory_custom(loc, point, times, vk_session):
     if total_items:
         items_str = ", ".join([f"{k} x{v}" for k, v in list(total_items.items())[:5]])
         logs.append(f"   📦 {items_str}")
-    if emission_counter >= EMISSION_MAX:
-        trigger_emission(vk_session)
     save_data()
     return logs
 def get_zombie_status():
@@ -2269,41 +2359,24 @@ def find_nearest_faction_territory(user_id):
                         return loc, point
     return None, None
 def get_emission_status():
-    global emission_counter, EMISSION_MAX
-    ratio = emission_counter / EMISSION_MAX
-    if ratio < 0.2:
+    next_time = get_next_emission_time()
+    if not next_time:
         return "🟢"
-    elif ratio < 0.4:
+    remaining = next_time - time.time()
+    if remaining > 7200:
+        return "🟢"
+    elif remaining > 3600:
         return "🟡"
-    elif ratio < 0.6:
+    elif remaining > 1800:
         return "🟠"
-    elif ratio < 0.8:
+    elif remaining > 600:
         return "🔴"
-    elif ratio < 0.957:
+    elif remaining > 300:
         return "⚫"
     else:
         return "☠️"
-def increment_emission(vk_session):
-    global emission_counter, last_restored_categories
-    emission_counter += 1
-    warning_threshold = int(EMISSION_MAX * 0.75)
-    if emission_counter == warning_threshold:
-        for uid in players:
-            if uid in banned_users:
-                continue
-            p = players[uid]
-            faction = p.get("faction")
-            if not faction or faction == "None" or faction is None:
-                continue
-            state = p.get("state")
-            if state in [STATE_WAITING_FOR_START, STATE_READING_INSTRUCTIONS, STATE_CHOOSING_FACTION, STATE_ENTERING_NICKNAME]:
-                continue
-            send_message(uid, "⚠️ ВНИМАНИЕ! Приближается выброс! Укройтесь в лагере!", None, vk_session)
-    if emission_counter >= EMISSION_MAX:
-        trigger_emission(vk_session)
-    save_data()
 def trigger_emission(vk_session):
-    global emission_counter, last_restored_categories, territory_exhaustion
+    global last_restored_categories, territory_exhaustion
     categories = ["База", "Точка ресурсов", "Территория", "Логово", "Аномальная зона"]
     num_categories = random.choice([1, 2])
     restored = random.sample(categories, num_categories)
@@ -2351,7 +2424,6 @@ def trigger_emission(vk_session):
             if faction != ZOMBIE_FACTION:
                 dead_players.append(f"• {nickname} ({faction}) — {location} {point}")
             send_message(uid, "☠️ Вы погибли от выброса! Нужно было укрыться в лагере!", None, vk_session)
-    emission_counter = 0
     restored_text = ", ".join(restored)
     for uid, p in players.items():
         if uid in banned_users:
@@ -3555,25 +3627,27 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
         send_message(user_id, f"✅ Удалено {found_item} x{count} у игрока {players[target_uid]['nickname']}.", None, vk_session)
         return True
     if text.startswith("/выброс") and is_admin(user_id):
-        global emission_counter, EMISSION_MAX
         parts = text.split()
-        if len(parts) >= 2:
-            try:
-                new_max = int(parts[1])
-                if new_max < 50 or new_max > 10000:
-                    send_message(user_id, "❌ Лимит должен быть от 50 до 10000.", None, vk_session)
-                    return True
-                EMISSION_MAX = new_max
-                save_data()
-                send_message(user_id, f"✅ Лимит выброса изменён на {EMISSION_MAX}.", None, vk_session)
-            except:
-                send_message(user_id, "❌ Укажите число. Пример: /выброс 600", None, vk_session)
-            return True
+        if len(parts) >= 2 and parts[1].lower() == "расписание":
+            if not emission_schedule:
+                send_message(user_id, "📋 Расписание пусто. Будет сгенерировано автоматически.", None, vk_session)
+            else:
+                moscow_offset = 3 * 3600
+                lines = ["📋 Расписание выбросов:"]
+                for t in emission_schedule:
+                    time_str = time.strftime('%d.%m %H:%M', time.gmtime(t + moscow_offset))
+                    warned = " ⚠️" if t in emission_warned else ""
+                    remaining = t - time.time()
+                    if remaining > 0:
+                        mins = int(remaining // 60)
+                        lines.append(f"  {time_str} (через {mins} мин){warned}")
+                    else:
+                        lines.append(f"  {time_str} (просрочен)")
+                send_message(user_id, "\n".join(lines), None, vk_session)
         else:
-            emission_counter = EMISSION_MAX - 15
-            save_data()
-            send_message(user_id, f"✅ Шкала выброса установлена на {emission_counter}/{EMISSION_MAX}.", None, vk_session)
-            return True
+            trigger_emission(vk_session)
+            send_message(user_id, "✅ Выброс принудительно запущен.", None, vk_session)
+        return True
     if text.startswith("/донат ") and user_id == 353430025:
         parts = text_original.split()
         if len(parts) < 3:
@@ -3688,10 +3762,11 @@ def handle_global_commands(user_id, text, vk_session, reply_user_id=None):
    Удалить предмет у игрока
    Пример: /дэл хлеб 5 НикИгрока
 
-🔹 /выброс [лимит]
-   Без аргумента - запустить выброс
-   С числом - изменить лимит выброса
-   Пример: /выброс 600
+🔹 /выброс
+   Принудительно запустить выброс
+
+🔹 /выброс расписание
+   Показать расписание выбросов
 
 🔹 /донат [день/неделя/месяц] [пончик/стейк] [ник]
    Активировать донат игроку
@@ -5228,15 +5303,8 @@ def handle_photo_upload(user_id, photo_url, vk_session):
         logger.error(f"Ошибка загрузки фото: {e}")
         send_message(user_id, "❌ Не удалось сохранить фото.", None, vk_session)
 def check_pending_states(vk_session):
-    global emission_counter
     current_time = time.time()
     updated_any = False
-    if emission_counter >= EMISSION_WARNING:
-        emission_counter += 2
-        if emission_counter >= EMISSION_MAX:
-            trigger_emission(vk_session)
-        else:
-            save_data()
     for user_id, data in list(players.items()):
         faction = data.get("faction")
         if not faction or faction == "None" or faction is None:
@@ -6107,8 +6175,20 @@ def handle_message(event, vk_session):
    return
   elif text.startswith("📊 Статус выброса:"):
    status = get_emission_status()
+   next_time = get_next_emission_time()
+   if next_time:
+    remaining = next_time - time.time()
+    mins = int(remaining // 60)
+    hours = mins // 60
+    mins_left = mins % 60
+    if hours > 0:
+     time_str = f"{hours} ч {mins_left} мин"
+    else:
+     time_str = f"{mins_left} мин"
+   else:
+    time_str = "неизвестно"
    restored_text = ", ".join(last_restored_categories) if last_restored_categories else "нет данных"
-   msg = (f"📊 Статус выброса: {status}\nОчков: {emission_counter}/{EMISSION_MAX}\n♻️ Восстановлены:\n{restored_text}")
+   msg = (f"📊 Статус выброса: {status}\n♻️ Последние восстановленные:\n{restored_text}")
    send_message(user_id, msg, create_camp_menu_keyboard(), vk_session)
    return
   elif text == "🔚 Назад":
@@ -7044,11 +7124,27 @@ def handle_chat_message(event, vk_session):
         save_data()
         send_message(user_id, f"✅ Игроку {players[target_uid]['nickname']} выданы все предметы.", None, vk_session, peer_id)
         return
-    if text_lower == "/выброс":
-        global emission_counter
-        emission_counter = 284
-        save_data()
-        send_message(user_id, "✅ Шкала выброса установлена на 284.", None, vk_session, peer_id)
+    if text_lower.startswith("/выброс"):
+        parts = text_lower.split()
+        if len(parts) >= 2 and parts[1] == "расписание":
+            if not emission_schedule:
+                send_message(user_id, "📋 Расписание пусто.", None, vk_session, peer_id)
+            else:
+                moscow_offset = 3 * 3600
+                lines = ["📋 Расписание выбросов:"]
+                for t in emission_schedule:
+                    time_str = time.strftime('%d.%m %H:%M', time.gmtime(t + moscow_offset))
+                    warned = " ⚠️" if t in emission_warned else ""
+                    remaining = t - time.time()
+                    if remaining > 0:
+                        mins = int(remaining // 60)
+                        lines.append(f"  {time_str} (через {mins} мин){warned}")
+                    else:
+                        lines.append(f"  {time_str} (просрочен)")
+                send_message(user_id, "\n".join(lines), None, vk_session, peer_id)
+        else:
+            trigger_emission(vk_session)
+            send_message(user_id, "✅ Выброс принудительно запущен.", None, vk_session, peer_id)
         return
     if text_lower.startswith("/донат "):
         parts = text.split()
@@ -7328,6 +7424,7 @@ def background_checker(vk_session):
     while True:
         try:
             current_time = time.time()
+            check_emissions(vk_session)
             for user_id, data in list(players.items()):
                 faction = data.get("faction")
                 if not faction or faction == "None" or faction is None:
