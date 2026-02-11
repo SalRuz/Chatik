@@ -2271,12 +2271,14 @@ def get_zombie_status():
     controlled = get_zombie_controlled_locations()
     strength = get_zombie_strength()
     phase = get_zombie_phase()
-    next_action_time = zombie_bot.get("last_action_time", 0) + ZOMBIE_ACTION_INTERVAL
+    cooldown = get_zombie_cooldown()
+    next_action_time = zombie_bot.get("last_action_time", 0) + cooldown
     remaining = max(0, next_action_time - time.time())
     mins = int(remaining // 60)
     secs = int(remaining % 60)
     lines = ["🧟 === СТАТУС ЗОМБИРОВАННЫХ ===", ""]
     lines.append(f"💪 Сила: {strength} | Фаза: {phase['name']}")
+    lines.append(f"⏱️ КД фазы: {cooldown // 60} мин")
     lines.append(f"💲 Деньги: {zombie_bot['money']}р")
     lines.append(f"👨‍👨‍👦‍👦 Сквады: {zombie_bot['squads']} (бонус: {zombie_bot.get('bonus_squads', 0)})")
     lines.append(f"🍖 Еда: {zombie_bot['food_units']}")
@@ -2341,6 +2343,9 @@ def get_zombie_phase():
     if current_phase is None:
         current_phase = ZOMBIE_PHASES[15]
     return current_phase
+def get_zombie_cooldown():
+    phase = get_zombie_phase()
+    return phase.get("cooldown", 1800)
 def find_nearest_faction_territory(user_id):
     p = players[user_id]
     faction = p.get("faction")
@@ -7486,7 +7491,7 @@ def background_checker(vk_session):
                             save_data()
                             send_message(user_id, "😴 Вы отдохнули и полностью восстановили выносливость.", create_camp_menu_keyboard(), vk_session)
             if LAST_STAND_MODE:
-                next_action_time = zombie_bot.get("last_action_time", 0) + ZOMBIE_ACTION_INTERVAL
+                next_action_time = zombie_bot.get("last_action_time", 0) + get_zombie_cooldown()
                 if current_time >= next_action_time:
                     zombie_take_action(vk_session)
             time.sleep(10)
